@@ -1,0 +1,66 @@
+{
+	"job_number":1,
+	"message_type":"SYNC",
+	"job_files":[
+		"name1.obj",
+		"name1.mtl",
+		"name2.obj",
+		"name2.mtl"
+	],
+	"objects":[
+		{
+			"name":"object_name",
+			"type":"mesh",
+			"files":["name1.obj","name1.mtl"],
+			"position":[0.0,0.0,0.0],
+			"scale":[1.0,1.0,1.0],
+			"rotation":[0.0,0.0,0.0]
+		},
+		{
+			"name":"object_name_2",
+			"type":"mesh",
+			"files":["name2.obj","name2.mtl"],
+			"position":[100.0,0.0,0.0],
+			"scale":[1.0,1.0,1.0],
+			"rotation":[0.0,0.0,0.0]
+		}
+	],
+	"task_number":1234,
+	"task_startx":0,
+	"task_starty":0,
+	"task_endx":20,
+	"task_endy":20,
+	"camera":{
+		"type":"pinhole",
+		"position":[0.0,0.0,100.0],
+		"lookat":[0.0,0.0,0.0],
+		"up":[0.0,1.0,0.0],
+		"aspect_ratio":1.5,
+		"sampling":"jittered",
+		"aa_samples":4
+	},
+	"lights":[
+		{
+			"type":"directional",
+			"intensity":1.0,
+			"colour":[1.0,1.0,1.0],
+			"direction":[0.0,-1.0,0.0]
+
+		},
+		{
+			"type":"point",
+			"intensity":1.0,
+			"colour":[1.0,1.0,1.0],
+			"position":[0.0,231.0,0.0]
+		},
+		{
+			"type":"ambient",
+			"intensity":1.0,
+			"colour":[1.0,1.0,1.0],
+			"occlusion_enabled":true,
+			"occlusion_samples":4
+		}
+
+	]
+
+}
