@@ -1,34 +1,38 @@
 import socket
 import time
+from src.client.message import Message, MessageType
+from pickle import loads as from_bytes
 
-'''
-Get own ip address
-'''
 def get_ip_addr():
+    """
+    Get own ip address
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect(('8.8.8.8', 80)) # doesn't matter what to connect to, just used to get socket
-        IP = s.getsockname()[0]
-    except:
+        s.connect(('8.8.8.8', 80))  # doesn't matter what to connect to, just used to get socket
+        ip = s.getsockname()[0]
+    except socket.error:
         # if socket failed to get sockname, use localhost
-        IP = '127.0.0.1' 
+        ip = '127.0.0.1'
     finally:
         s.close()
-    return IP
+    return ip
 
-'''
-Connect to a hostname on given post
-'''
+
 def connect(hostname, port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    """
+    Connect to a hostname on given post
+    """
+    sock: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket.setdefaulttimeout(0.05)
     result = sock.connect_ex((hostname, port))
     return sock, (result == 0)
 
-'''
-Attempt to find and connect to the master node
-'''
+
 def attempt_master_connection(master_port):
+    """
+    Attempt to find and connect to the master node
+    """
     network_id = get_ip_addr().rpartition('.')[0]
     for i in range(0, 255):
         hostname = network_id + "." + str(i)
@@ -41,15 +45,16 @@ def attempt_master_connection(master_port):
             sock.close()
     return None
 
+
 if __name__ == "__main__":
-    sock = None
-    while(sock == None):
-        sock = attempt_master_connection(9999)
+    connection: socket = None
+    while connection is None:
+        connection = attempt_master_connection(9999)
         time.sleep(1)
 
     # Connection established
     # Just sending Hello, waiting for a response, and then closing connection
-    sock.sendall(bytes('Hello', 'ascii'))
-    response = str(sock.recv(1024), 'ascii')
-    print("Received: {}".format(response))
-    sock.close()
+    connection.sendall(bytes('Hello', 'ascii'))
+    response: Message = from_bytes(connection.recv(1024))
+    print("Received: {}".format(response.get_data()))
+    connection.close()

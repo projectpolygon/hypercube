@@ -33,3 +33,6 @@
 
 # Jekyll
 /docs/_site/
+
+# IDE files
+/.idea
