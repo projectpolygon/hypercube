@@ -23,7 +23,7 @@ def connect(hostname, port):
     """
     Connect to a hostname on given post
     """
-    sock: socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket.setdefaulttimeout(0.05)
     result = sock.connect_ex((hostname, port))
     return sock, (result == 0)
@@ -46,18 +46,33 @@ def attempt_master_connection(master_port):
     return None
 
 
+def process_job(connection: socket.socket, job_size: int):
+    processed = 0
+    data = None
+    while processed < job_size:
+        msg: Message = from_bytes(connection.recv(1024))
+        data = data + msg.get_data()
+        processed += msg.meta_data.size
+    return data
+
+
 if __name__ == "__main__":
-    connection: socket = None
+    connection: socket.socket = None
     while connection is None:
         connection = attempt_master_connection(9999)
         time.sleep(1)
 
     # Connection established
-    # Just sending Hello, waiting for a response, and then closing connection
+    # Create Job Request Message and send
     msg = Message(MessageType.JOB_REQUEST)
     connection.sendall(to_bytes(msg))
     response: Message = from_bytes(connection.recv(1024))
-    print("Received: {}".format(response.test()))
 
-    connection.sendall(to_bytes(Message(MessageType.JOB_REQUEST, b'Send Data Back')))
+    if response.meta_data.message_type is MessageType.JOB_SYNC:
+        # processed_data = process_job(connection, response.meta_data.size)
+        processed_data = response.get_data()
+
+    print("Processed data: {}".format(processed_data))
+
+    connection.sendall(to_bytes(Message(MessageType.JOB_SYNC, processed_data)))
     connection.close()

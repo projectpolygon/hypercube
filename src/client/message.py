@@ -16,10 +16,12 @@ class MessageMetaData:
     Meta Data for the Message
     Contains:
         id: Unique Message Id
+        type: MessageType
         size: size in bytes of the original data
         compressed_size: size in bytes of the message payload
     """
     id: str = None
+    message_type: MessageType = None
     size: int = None
     compressed_size: int = None
 

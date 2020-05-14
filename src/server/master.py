@@ -54,8 +54,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             if not data:
                 break
             client_msg: Message = from_bytes(data)
+            if client_msg.meta_data.message_type is not MessageType.JOB_SYNC:
+                continue
+
             print("Message", client_address, "->", client_msg.get_data())
-            # self.request.send(to_bytes(msg))
         # Remove connection from dict after disconnect
         connections[client_address] = None
 
