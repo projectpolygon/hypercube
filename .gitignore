@@ -1,3 +1,7 @@
+# sent over job files
+job*/
+
+### Generic gitignores
 # Prerequisites
 *.d
 

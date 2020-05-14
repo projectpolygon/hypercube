@@ -1,5 +1,5 @@
 from enum import Enum
-import sys
+from sys import getsizeof
 from zlib import compress, decompress
 
 
@@ -9,6 +9,7 @@ class MessageType(Enum):
     """
     JOB_REQUEST = 1
     JOB_SYNC = 2
+    JOB_DATA = 3
 
 
 class MessageMetaData:
@@ -16,11 +17,13 @@ class MessageMetaData:
     Meta Data for the Message
     Contains:
         id: Unique Message Id
+        job_id: Id of the Job
         type: MessageType
         size: size in bytes of the original data
         compressed_size: size in bytes of the message payload
     """
     id: str = None
+    job_id: str = None
     message_type: MessageType = None
     size: int = None
     compressed_size: int = None
@@ -50,8 +53,8 @@ class Message:
         # Generate Meta Data
         meta_data = MessageMetaData()
         meta_data.message_type = message_type
-        meta_data.size = sys.getsizeof(data)
-        meta_data.compressed_size = sys.getsizeof(self.payload)
+        meta_data.size = getsizeof(data)
+        meta_data.compressed_size = getsizeof(self.payload)
         self.meta_data = meta_data
 
     def get_data(self):

@@ -2,6 +2,9 @@ import socket
 import time
 from message import Message, MessageType
 from pickle import dumps as to_bytes, loads as from_bytes
+from pathlib import Path
+from shutil import rmtree
+
 
 def get_ip_addr():
     """
@@ -46,14 +49,33 @@ def attempt_master_connection(master_port):
     return None
 
 
+def create_job_dir(job_id):
+    """
+    Create job directory based on job id
+    Overwrites the directory if it exists
+    """
+    path = "./job" + str(job_id)
+    rmtree(path=path, ignore_errors=True)
+    Path(path).mkdir(parents=True, exist_ok=False)
+    return path
+
+
 def process_job(connection: socket.socket, job_size: int):
-    processed = 0
-    data = None
-    while processed < job_size:
-        msg: Message = from_bytes(connection.recv(1024))
-        data = data + msg.get_data()
-        processed += msg.meta_data.size
+    """
+    Recieve data from server and unpack it
+    """
+    msg: Message = from_bytes(connection.recv(job_size))
+    data = msg.get_data()
     return data
+
+
+def save_processed_data(job_id, data):
+    """
+    Write job bytes to file
+    """
+    path = create_job_dir(job_id)
+    with open(path+"/job", "wb") as out_file:
+        out_file.write(data)
 
 
 if __name__ == "__main__":
@@ -68,11 +90,14 @@ if __name__ == "__main__":
     connection.sendall(to_bytes(msg))
     response: Message = from_bytes(connection.recv(1024))
 
-    if response.meta_data.message_type is MessageType.JOB_SYNC:
-        # processed_data = process_job(connection, response.meta_data.size)
-        processed_data = response.get_data()
+    # wait for job sync message
+    while response.meta_data.message_type is not MessageType.JOB_SYNC:
+        continue
 
-    print("Processed data: {}".format(processed_data))
+    processed_data = process_job(connection, response.meta_data.size)
 
-    connection.sendall(to_bytes(Message(MessageType.JOB_SYNC, processed_data)))
+    if processed_data is not None:
+        save_processed_data(response.meta_data.job_id, processed_data)
+
+    connection.sendall(to_bytes(Message(MessageType.JOB_SYNC, b'Finished Processing, goodbye')))
     connection.close()

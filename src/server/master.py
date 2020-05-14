@@ -1,8 +1,11 @@
 import threading
+from time import sleep
 import socketserver
 import socket
+from sys import getsizeof
 from message import Message, MessageType
 from pickle import dumps as to_bytes, loads as from_bytes
+from pathlib import Path
 
 # dict to keep track of live connections
 connections = {}
@@ -31,6 +34,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     """
 
     def handle(self):
+
+        #  job
         client_address = str(self.client_address)
         data = self.request.recv(1024)
         if not data:
@@ -42,15 +47,23 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         
         print("Client", client_address, ": JOB_REQUEST")
         # Add connection to dict with client_address as key
-        connections[client_address] = self.request  # self.request is the TCP socket connected to the client
-        # Create JOB SYNC message
-        sync_msg = Message(MessageType.JOB_SYNC, b'this is just test data in bytes, blah blah boop de boop bleep blap')
-        self.request.send(to_bytes(sync_msg))
+        connection: socket.socket = self.request # self.request is the TCP socket connected to the client
+        connections[client_address]: socket.socket = connection
+        
+        # Create JOB SYNC message and send
+        sync_msg = Message(MessageType.JOB_SYNC)
+        sync_msg.meta_data.job_id = '0'
+        sync_msg.meta_data.size = getsizeof(job_data)
+        connection.send(to_bytes(sync_msg))
+        
+        # Create JOB DATA message and send
+        job_msg = Message(MessageType.JOB_DATA, job_data)
+        connection.send(to_bytes(job_msg))
 
         # while connection live
         while 1:
-            # currently just waiting for message, 
-            data = self.request.recv(1024)
+            # wait for job_sync from client, indicating job is done
+            data = connection.recv(1024)
             if not data:
                 break
             client_msg: Message = from_bytes(data)
@@ -69,7 +82,18 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 
+def get_job():
+    while True:
+        if not Path('./job').exists():
+            sleep(1)
+            continue
+        with open('./job', 'rb') as job:
+            return job.read()
+
+
 if __name__ == "__main__":
+    job_data = get_job()
+
     HOST, PORT = get_ip_addr(), 9999
 
     server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
