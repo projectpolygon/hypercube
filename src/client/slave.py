@@ -1,7 +1,7 @@
 import socket
 import time
-from src.client.message import Message, MessageType
-from pickle import loads as from_bytes
+from message import Message, MessageType
+from pickle import dumps as to_bytes, loads as from_bytes
 
 def get_ip_addr():
     """
@@ -54,7 +54,10 @@ if __name__ == "__main__":
 
     # Connection established
     # Just sending Hello, waiting for a response, and then closing connection
-    connection.sendall(bytes('Hello', 'ascii'))
+    msg = Message(MessageType.JOB_REQUEST)
+    connection.sendall(to_bytes(msg))
     response: Message = from_bytes(connection.recv(1024))
-    print("Received: {}".format(response.get_data()))
+    print("Received: {}".format(response.test()))
+
+    connection.sendall(to_bytes(Message(MessageType.JOB_REQUEST, b'Send Data Back')))
     connection.close()

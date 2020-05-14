@@ -1,8 +1,8 @@
 import threading
 import socketserver
 import socket
-from src.server.message import Message, MessageType
-from pickle import dumps as to_bytes
+from message import Message, MessageType
+from pickle import dumps as to_bytes, loads as from_bytes
 
 # dict to keep track of live connections
 connections = {}
@@ -32,19 +32,30 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         client_address = str(self.client_address)
+        data = self.request.recv(1024)
+        if not data:
+            return
+            
+        client_message: Message = from_bytes(data)
+        if client_message.meta_data.message_type is not MessageType.JOB_REQUEST:
+            return
+        
+        print("Client", client_address, ": JOB_REQUEST")
         # Add connection to dict with client_address as key
         connections[client_address] = self.request  # self.request is the TCP socket connected to the client
-        # while connection live
-        msg = Message(MessageType.JOB_REQUEST, b'this is just test data in bytes, blah blah boop de boop bleep blap')
+        # Create JOB SYNC message
+        sync_msg = Message(MessageType.JOB_SYNC, b'this is just test data in bytes, blah blah boop de boop bleep blap')
+        self.request.send(to_bytes(sync_msg))
 
+        # while connection live
         while 1:
-            # currently just waiting for message, then sending back howdy
+            # currently just waiting for message, 
             data = self.request.recv(1024)
             if not data:
-                continue
-            data = data.strip()
-            print(client_address + " -> ", data)
-            self.request.send(to_bytes(msg))
+                break
+            client_msg: Message = from_bytes(data)
+            print("Message", client_address, "->", client_msg.get_data())
+            # self.request.send(to_bytes(msg))
         # Remove connection from dict after disconnect
         connections[client_address] = None
 

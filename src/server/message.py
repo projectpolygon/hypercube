@@ -16,10 +16,12 @@ class MessageMetaData:
     Meta Data for the Message
     Contains:
         id: Unique Message Id
+        type: MessageType
         size: size in bytes of the original data
         compressed_size: size in bytes of the message payload
     """
     id: str = None
+    message_type: MessageType = None
     size: int = None
     compressed_size: int = None
 
@@ -40,12 +42,14 @@ class Message:
     Upon creation: prepares message transfer by compressing data
     and generating meta data
     """
-    def __init__(self, type: MessageType, data = None):
-        # Compress Data
-        self.payload = compress(data)
+    def __init__(self, message_type: MessageType, data = None):
+        self.payload = None
+        if data is not None:
+            # Compress Data
+            self.payload = compress(data)
         # Generate Meta Data
         meta_data = MessageMetaData()
-        meta_data.message_type = type
+        meta_data.message_type = message_type
         meta_data.size = sys.getsizeof(data)
         meta_data.compressed_size = sys.getsizeof(self.payload)
         self.meta_data = meta_data
@@ -54,7 +58,7 @@ class Message:
         """
         Returns the original data
         """
-        return decompress(self.payload)
+        return decompress(self.payload) if self.payload is not None else None
 
     def test(self):
         """
