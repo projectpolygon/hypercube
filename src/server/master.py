@@ -50,15 +50,19 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         connection: socket.socket = self.request # self.request is the TCP socket connected to the client
         connections[client_address]: socket.socket = connection
         
+        # Create JOB DATA message
+        job_msg = Message(MessageType.JOB_DATA, job_data)
+        data = to_bytes(job_msg)
+
         # Create JOB SYNC message and send
         sync_msg = Message(MessageType.JOB_SYNC)
         sync_msg.meta_data.job_id = '0'
-        sync_msg.meta_data.size = getsizeof(job_data)
+        sync_msg.meta_data.size = getsizeof(data)
         connection.send(to_bytes(sync_msg))
         
-        # Create JOB DATA message and send
-        job_msg = Message(MessageType.JOB_DATA, job_data)
-        connection.send(to_bytes(job_msg))
+        # Send JOB DATA message
+        connection.send(data)
+        print('Sending job message (' + str(getsizeof(data)) + ' bytes)')
 
         # while connection live
         while 1:
@@ -87,8 +91,11 @@ def get_job():
         if not Path('./job').exists():
             sleep(1)
             continue
+        print('Job Found, Reading data...')
         with open('./job', 'rb') as job:
-            return job.read()
+            data = job.read()
+            print('Job uncompressed size:', str(getsizeof(data)))
+            return data
 
 
 if __name__ == "__main__":

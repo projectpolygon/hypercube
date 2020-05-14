@@ -42,6 +42,7 @@ def attempt_master_connection(master_port):
         sock, connected = connect(hostname, master_port)
         if connected:
             print("Master found at: ", hostname + ':' + str(master_port))
+            sock.settimeout(None)
             return sock
         else:
             print("Master not at: ", hostname)
@@ -57,6 +58,7 @@ def create_job_dir(job_id):
     path = "./job" + str(job_id)
     rmtree(path=path, ignore_errors=True)
     Path(path).mkdir(parents=True, exist_ok=False)
+    print('Created Job Dir', path)
     return path
 
 
@@ -66,6 +68,7 @@ def process_job(connection: socket.socket, job_size: int):
     """
     msg: Message = from_bytes(connection.recv(job_size))
     data = msg.get_data()
+    print('Finished Processing Job')
     return data
 
 
@@ -73,8 +76,9 @@ def save_processed_data(job_id, data):
     """
     Write job bytes to file
     """
-    path = create_job_dir(job_id)
-    with open(path+"/job", "wb") as out_file:
+    path = create_job_dir(job_id) + "/job"
+    with open(path, "wb") as out_file:
+        print('Writing data to file:', path)
         out_file.write(data)
 
 
