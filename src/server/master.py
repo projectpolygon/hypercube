@@ -53,16 +53,24 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         # Create JOB DATA message
         job_msg = Message(MessageType.JOB_DATA, job_data)
         data = to_bytes(job_msg)
+        size = getsizeof(data)
 
         # Create JOB SYNC message and send
         sync_msg = Message(MessageType.JOB_SYNC)
         sync_msg.meta_data.job_id = '0'
-        sync_msg.meta_data.size = getsizeof(data)
-        connection.send(to_bytes(sync_msg))
+        sync_msg.meta_data.size = size
+        connection.sendall(to_bytes(sync_msg))
         
         # Send JOB DATA message
-        connection.send(data)
-        print('Sending job message (' + str(getsizeof(data)) + ' bytes)')
+        print('Sending job message (' + str(size) + ' bytes)')
+        total_sent = 0
+        while total_sent < size - 33:
+            sent = connection.send(data[total_sent:])
+            if sent == 0:
+                continue
+
+            total_sent = total_sent + sent
+            print(total_sent)
 
         # while connection live
         while 1:
@@ -88,11 +96,11 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 def get_job():
     while True:
-        if not Path('./job').exists():
+        if not Path('./thanos.png').exists():
             sleep(1)
             continue
         print('Job Found, Reading data...')
-        with open('./job', 'rb') as job:
+        with open('./thanos.png', 'rb') as job:
             data = job.read()
             print('Job uncompressed size:', str(getsizeof(data)))
             return data
@@ -101,7 +109,7 @@ def get_job():
 if __name__ == "__main__":
     job_data = get_job()
 
-    HOST, PORT = get_ip_addr(), 9999
+    HOST, PORT = get_ip_addr(), 1234
 
     server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
     with server:

@@ -66,7 +66,29 @@ def process_job(connection: socket.socket, job_size: int):
     """
     Recieve data from server and unpack it
     """
-    msg: Message = from_bytes(connection.recv(job_size))
+    chunks = []
+    bytes_recieved = 0
+    while bytes_recieved < job_size - 33:
+        bytes_left = job_size - bytes_recieved
+        chunk = connection.recv(min(bytes_left, 2048))
+        if chunk == b'':
+            print( "connection lost... reconnecting" )  
+            connected = False    
+            # recreate socket  
+            sock = socket.socket()
+            while not connected:      
+                # attempt to reconnect, otherwise sleep for 2 seconds      
+                try:
+                    sock.connect( ( connection.getsockname, 1234 ) )
+                    connected = True
+                    print( "re-connection successful" )
+                except socket.error:
+                    sleep(2)
+                    
+        chunks.append(chunk)
+        bytes_recieved = bytes_recieved + len(chunk)
+    data_recieved = b''.join(chunks)
+    msg: Message = from_bytes(data_recieved)
     data = msg.get_data()
     print('Finished Processing Job')
     return data
@@ -85,7 +107,7 @@ def save_processed_data(job_id, data):
 if __name__ == "__main__":
     connection: socket.socket = None
     while connection is None:
-        connection = attempt_master_connection(9999)
+        connection = attempt_master_connection(1234)
         time.sleep(1)
 
     # Connection established
