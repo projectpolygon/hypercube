@@ -9,7 +9,11 @@ class MessageType(Enum):
     """
     JOB_REQUEST = 1
     JOB_SYNC = 2
-    JOB_DATA = 3
+	JOB_DATA = 3
+    TASK_REQUEST = 4 # From slave to master
+    TASK_SYNC = 5 # submit and return
+	TASK_DATA = 6
+	JOB_END = 7
 
 
 class MessageMetaData:

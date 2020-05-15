@@ -1,0 +1,12 @@
+{
+	"type":"JOB_SYNC",
+	"job_id":0,
+	"files":[
+		"file1.obj",
+		"file1.mtl",
+		"file2.obj",
+		"file2.mtl",
+		"setting.txt"
+	],
+	"user_options":""
+}

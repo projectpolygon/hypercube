@@ -1,6 +1,6 @@
 {
 	"job_number":1,
-	"message_type":"SYNC",
+	"message_type":"TASK_SYNC",
 	"job_files":[
 		"name1.obj",
 		"name1.mtl",
