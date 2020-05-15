@@ -1,0 +1,13 @@
+# Ignored files
+*/*.md
+*.md
+
+docs/
+
+.git/
+.gitignore
+.dockerignore
+
+LICENSE
+Dockerfile
+
