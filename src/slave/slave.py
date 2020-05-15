@@ -1,6 +1,6 @@
 import socket
 from time import sleep
-from message import Message, MessageType
+from common.message import Message, MessageType
 from pickle import dumps as to_bytes, loads as from_bytes
 from pathlib import Path
 from shutil import rmtree

@@ -2,7 +2,7 @@ import threading
 from time import sleep
 import socketserver
 import socket
-from message import Message, MessageType
+from common.message import Message, MessageType
 from pickle import dumps as to_bytes, loads as from_bytes
 from pathlib import Path
 
