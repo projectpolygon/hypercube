@@ -1,5 +1,5 @@
 import socket
-import time
+from time import sleep
 from message import Message, MessageType
 from pickle import dumps as to_bytes, loads as from_bytes
 from pathlib import Path
@@ -12,7 +12,8 @@ def get_ip_addr():
     """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect(('8.8.8.8', 80))  # doesn't matter what to connect to, just used to get socket
+        # doesn't matter what to connect to, just used to get socket
+        s.connect(('8.8.8.8', 80))
         ip = s.getsockname()[0]
     except socket.error:
         # if socket failed to get sockname, use localhost
@@ -43,11 +44,11 @@ def attempt_master_connection(master_port):
         if connected:
             print("Master found at: ", hostname + ':' + str(master_port))
             sock.settimeout(None)
-            return sock
+            return sock, hostname
         else:
             print("Master not at: ", hostname)
             sock.close()
-    return None
+    return None, None
 
 
 def create_job_dir(job_id):
@@ -68,23 +69,23 @@ def process_job(connection: socket.socket, job_size: int):
     """
     chunks = []
     bytes_recieved = 0
-    while bytes_recieved < job_size - 33:
+    while bytes_recieved < job_size:
         bytes_left = job_size - bytes_recieved
         chunk = connection.recv(min(bytes_left, 2048))
         if chunk == b'':
-            print( "connection lost... reconnecting" )  
-            connected = False    
-            # recreate socket  
+            print("connection lost... reconnecting")
+            connected = False
+            # recreate socket
             sock = socket.socket()
-            while not connected:      
-                # attempt to reconnect, otherwise sleep for 2 seconds      
+            while not connected:
+                # attempt to reconnect, otherwise sleep for 2 seconds
                 try:
-                    sock.connect( ( connection.getsockname, 1234 ) )
+                    sock.connect((HOST, PORT))
                     connected = True
-                    print( "re-connection successful" )
+                    print("re-connection successful")
                 except socket.error:
                     sleep(2)
-                    
+
         chunks.append(chunk)
         bytes_recieved = bytes_recieved + len(chunk)
     data_recieved = b''.join(chunks)
@@ -105,10 +106,11 @@ def save_processed_data(job_id, data):
 
 
 if __name__ == "__main__":
+    PORT = 9999
     connection: socket.socket = None
     while connection is None:
-        connection = attempt_master_connection(1234)
-        time.sleep(1)
+        connection, HOST = attempt_master_connection(PORT)
+        sleep(1)
 
     # Connection established
     # Create Job Request Message and send
@@ -125,5 +127,6 @@ if __name__ == "__main__":
     if processed_data is not None:
         save_processed_data(response.meta_data.job_id, processed_data)
 
-    connection.sendall(to_bytes(Message(MessageType.JOB_SYNC, b'Finished Processing, goodbye')))
+    connection.sendall(
+        to_bytes(Message(MessageType.JOB_SYNC, b'Finished Processing, goodbye')))
     connection.close()
