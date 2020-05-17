@@ -4,14 +4,14 @@ from zlib import compress, decompress
 
 
 class MessageType(Enum):
-    """
-    Enum class for Possible Message Types
-    """
-    JOB_REQUEST = 1
-    JOB_SYNC = 2
+	"""
+	Enum class for Possible Message Types
+	"""
+	JOB_REQUEST = 1
+	JOB_SYNC = 2
 	JOB_DATA = 3
-    TASK_REQUEST = 4 # From slave to master
-    TASK_SYNC = 5 # submit and return
+	TASK_REQUEST = 4 # From slave to master
+	TASK_SYNC = 5 # submit and return
 	TASK_DATA = 6
 	JOB_END = 7
 

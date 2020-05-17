@@ -1,33 +1,17 @@
 import socket
 from time import sleep
 from common.message import Message, MessageType
+from common.networking import *
 from pickle import dumps as to_bytes, loads as from_bytes
 from pathlib import Path
 from shutil import rmtree
-
-
-def get_ip_addr():
-    """
-    Get own ip address
-    """
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't matter what to connect to, just used to get socket
-        s.connect(('8.8.8.8', 80))
-        ip = s.getsockname()[0]
-    except socket.error:
-        # if socket failed to get sockname, use localhost
-        ip = '127.0.0.1'
-    finally:
-        s.close()
-    return ip
-
 
 def connect(hostname, port):
     """
     Connect to a hostname on given post
     """
     sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socket.setdefaulttimeout(0.05)
     result = sock.connect_ex((hostname, port))
     return sock, (result == 0)
@@ -40,13 +24,14 @@ def attempt_master_connection(master_port):
     network_id = get_ip_addr().rpartition('.')[0]
     for i in range(0, 255):
         hostname = network_id + "." + str(i)
+        hostname = "192.168.1.64"
         sock, connected = connect(hostname, master_port)
         if connected:
             print("Master found at: ", hostname + ':' + str(master_port))
             sock.settimeout(None)
             return sock, hostname
         else:
-            print("Master not at: ", hostname)
+            print("Master not at: ", hostname + ':' + str(master_port))
             sock.close()
     return None, None
 
@@ -104,29 +89,47 @@ def save_processed_data(job_id, data):
         print('Writing data to file:', path)
         out_file.write(data)
 
+class slave_client():
+	def __init__(self):
+		self.running = True
+
+	def job_listen(self):
+		while True:
+			connection: socket.socket = None
+			while connection is None:
+				self.connection, HOST = attempt_master_connection(PORT)
+				sleep(1)
+			print("Connection found")
+			msg = Message(MessageType.JOB_REQUEST)
+			self.connection.sendall(to_bytes(msg))
+			
+			response: Message = from_bytes(1024) #assume that response is 1024
+
+
+
+	
 
 if __name__ == "__main__":
-    PORT = 9999
-    connection: socket.socket = None
-    while connection is None:
-        connection, HOST = attempt_master_connection(PORT)
-        sleep(1)
+	PORT = 9999
+	client: slave_client = slave_client()
+	client.job_listen()
+   
 
     # Connection established
     # Create Job Request Message and send
-    msg = Message(MessageType.JOB_REQUEST)
-    connection.sendall(to_bytes(msg))
-    response: Message = from_bytes(connection.recv(1024))
+    #msg = Message(MessageType.JOB_REQUEST)
+    #connection.sendall(to_bytes(msg))
+    #response: Message = from_bytes(connection.recv(1024))
 
     # wait for job sync message
-    while response.meta_data.message_type is not MessageType.JOB_SYNC:
-        continue
+    #while response.meta_data.message_type is not MessageType.JOB_SYNC:
+    #    continue
 
-    processed_data = process_job(connection, response.meta_data.size)
+    #processed_data = process_job(connection, response.meta_data.size)
 
-    if processed_data is not None:
-        save_processed_data(response.meta_data.job_id, processed_data)
+    #if processed_data is not None:
+    #    save_processed_data(response.meta_data.job_id, processed_data)
 
-    connection.sendall(
-        to_bytes(Message(MessageType.JOB_SYNC, b'Finished Processing, goodbye')))
-    connection.close()
+    #connection.sendall(
+    #    to_bytes(Message(MessageType.JOB_SYNC, b'Finished Processing, goodbye')))
+    #connection.close()

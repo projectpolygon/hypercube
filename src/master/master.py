@@ -10,7 +10,6 @@ from pathlib import Path
 # dict to keep track of live connections
 connections = {}
 
-
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 	"""
     Handler created for each connection.
@@ -82,7 +81,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
 		# Create JOB SYNC message and send
 		sync_msg = Message(MessageType.JOB_SYNC)
-		sync_msg.meta_data.job_id = '0'
+		sync_msg.meta_data.job_id = int('1234')
 		sync_msg.meta_data.size = size
 		connection.sendall(to_bytes(sync_msg))
 
@@ -98,6 +97,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 	def send_file(self, message: Message):
 		if message.meta_data.message_type is not MessageType.FILE_REQUEST:
 			return None
+		print(message.payload)
+		#with file_to_send as open("r", message.payload):
+		
 		# parse message for filename
 		# open file
 		# read contents
@@ -128,6 +130,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
 	def handle(self):
 		# JOB_REQUEST comes in
+		print("new request")
 		slave_message: Message = self.job_request()
 		if not slave_message:
 			return
@@ -181,6 +184,7 @@ if __name__ == "__main__":
 	job_data = get_job()
 
 	HOST, PORT = get_ip_addr(), 9999
+	print(HOST + ':' + str(PORT))
 	server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
 	with server:
 		# Start a thread with the server -- that thread will then start
