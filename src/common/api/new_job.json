@@ -1,12 +1,10 @@
 {
 	"type":"JOB_SYNC",
-	"job_id":0,
+	"job_id":69420,
 	"files":[
-		"file1.obj",
-		"file1.mtl",
-		"file2.obj",
-		"file2.mtl",
-		"setting.txt"
-	],
-	"user_options":""
+		"common/api/new_job.json",
+		"common/api/new_job.json",
+		"common/api/new_job.json"
+		],
+	"payload":""
 }

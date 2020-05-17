@@ -54,6 +54,7 @@ class Message:
 	"""
 	def __init__(self, message_type: MessageType, data = None):
 		self.files = []
+		self.payload_size = 0
 		self.payload = None
 		if data is not None:
 			# Compress Data

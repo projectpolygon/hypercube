@@ -86,14 +86,28 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 			total_sent = total_sent + sent
 
 	def send_file(self, message: Message):
+		connection : socket.socket = self.request	
 		if message.meta_data.message_type is not MessageType.FILE_REQUEST:
 			print(message.meta_data.message_type)
 			return None
 		try:
-			with open(message.files[0], 'r') as reqfile:
+			print("Searching for {}".format(message.files[0]))
+			with open(message.files[0], 'rb') as reqfile:
 				reqdata = reqfile.read()
-				print(reqdata)
-		except:
+
+				data_msg:Message = Message(MessageType.FILE_DATA, reqdata)
+				data_msg.job_id = job_object.job_id
+				sync_msg:Message = Message(MessageType.FILE_SYNC)
+				sync_msg.payload_size = len(reqdata)
+
+				connection.sendall(to_bytes(sync_msg))
+				print("Sent SYNC")
+				sleep(2)
+
+				connection.sendall(to_bytes(data_msg))
+				print("Sent DATA")
+		except Exception as e:
+			print(e)
 			print("CRIT ERR: file was asked for, but not found")
 		#with file_to_send as open("r", message.payload):
 		

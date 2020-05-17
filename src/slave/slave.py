@@ -33,10 +33,6 @@ def attempt_master_connection(master_port):
             sock.close()
     return None, None
 
-
-
-
-
 def process_job(connection: socket.socket, job_size: int):
     """
     Recieve data from server and unpack it
@@ -44,8 +40,11 @@ def process_job(connection: socket.socket, job_size: int):
     chunks = []
     bytes_recieved = 0
     while bytes_recieved < job_size:
+        print(bytes_recieved)
         bytes_left = job_size - bytes_recieved
-        chunk = connection.recv(min(bytes_left, 2048))
+        # TODO the chunking can't just rely on the payload. 
+        # Since the object must be account for as well!!!!
+        chunk = connection.recv(min(bytes_left + 1000, 2048)) # NOTICE THE + 1000
         if chunk == b'':
             print("connection lost... reconnecting")
             connected = False
@@ -64,9 +63,10 @@ def process_job(connection: socket.socket, job_size: int):
         bytes_recieved = bytes_recieved + len(chunk)
     data_recieved = b''.join(chunks)
     msg: Message = from_bytes(data_recieved)
-    data = msg.get_data()
-    print('Finished Processing Job')
-    return data
+    return msg
+	#data = msg.get_data()
+    #print('Finished Processing Job')
+    #return data
 
 
 def save_processed_data(job_id, data):
@@ -79,31 +79,52 @@ def save_processed_data(job_id, data):
         out_file.write(data)
 
 class slave_client():
+	"""
+	When the slave is started, this class should be what the user application
+	can import to begin using the features of the system on the slave itself
+	"""
 	def __init__(self):
-		self.running = True
+		self.running = False
 	
 	def create_job_dir(self, job_id):
-    	"""
-    	Create job directory based on job id
-    	Overwrites the directory if it exists
-    	"""
+		"""
+		Create job directory based on job id
+		Overwrites the directory if it exists
+		"""
 		path = "./job" + str(job_id)
 		rmtree(path=path, ignore_errors=True)
 		Path(path).mkdir(parents=True, exist_ok=False)
 		print('Created Job Dir', path)
 		return path
 	
-	def file_request(self, filename, connection):
+	def file_get(self, filename, connection):
 		print("Asking for file: {}".format(filename))
 		msg = Message(MessageType.FILE_REQUEST)
 		msg.files = [filename]
+
+		# send the FILE_REQUEST message
 		connection.sendall(to_bytes(msg))
+		sleep(1)
+
+		# TODO: This may fail if the file isnt found!!!!
+		sync_response:Message = from_bytes(connection.recv(1024))
+
+		# parse the payload as an int
+		expected:int = int(sync_response.payload_size)
+		print("expecting file of size {}".format(expected))
+
+		data = process_job(connection, expected)
+		print(data.test())
+		with open("./job" + str(data.job_id) + "/" + filename, 'wb') as new_file:
+			new_file.write(data.get_data())
+		# wait to receive the FILE_SYNC message
 
 	def start_job(self, connection):
 		"""
 		Connection established, handle the job
 		"""
 		print("Connection found")
+		self.running = True
 		msg = Message(MessageType.JOB_REQUEST)
 		connection.sendall(to_bytes(msg))		
 		try:
@@ -117,7 +138,7 @@ class slave_client():
 
 		# fetch each required job file
 		for job_file in response.job_files:
-			self.file_request(job_file, connection)
+			self.file_get(job_file, connection)
 		print(response.meta_data.job_id)
 		print(response.meta_data.message_type)
 		print(response.payload)

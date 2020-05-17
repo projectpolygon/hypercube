@@ -13,6 +13,7 @@ class Job():
 	
 	def load_from_bytes(self, data):
 		self.parsed_file = json.loads(data)
+		self.job_id = self.parsed_file.get("job_id")
 	
 	def get_message(self):
 		message = Message(MessageType.JOB_SYNC)
