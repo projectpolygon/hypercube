@@ -34,16 +34,7 @@ def attempt_master_connection(master_port):
     return None, None
 
 
-def create_job_dir(job_id):
-    """
-    Create job directory based on job id
-    Overwrites the directory if it exists
-    """
-    path = "./job" + str(job_id)
-    rmtree(path=path, ignore_errors=True)
-    Path(path).mkdir(parents=True, exist_ok=False)
-    print('Created Job Dir', path)
-    return path
+
 
 
 def process_job(connection: socket.socket, job_size: int):
@@ -90,19 +81,61 @@ def save_processed_data(job_id, data):
 class slave_client():
 	def __init__(self):
 		self.running = True
+	
+	def create_job_dir(self, job_id):
+    	"""
+    	Create job directory based on job id
+    	Overwrites the directory if it exists
+    	"""
+		path = "./job" + str(job_id)
+		rmtree(path=path, ignore_errors=True)
+		Path(path).mkdir(parents=True, exist_ok=False)
+		print('Created Job Dir', path)
+		return path
+	
+	def file_request(self, filename, connection):
+		print("Asking for file: {}".format(filename))
+		msg = Message(MessageType.FILE_REQUEST)
+		msg.files = [filename]
+		connection.sendall(to_bytes(msg))
 
-	def job_listen(self):
+	def start_job(self, connection):
+		"""
+		Connection established, handle the job
+		"""
+		print("Connection found")
+		msg = Message(MessageType.JOB_REQUEST)
+		connection.sendall(to_bytes(msg))		
+		try:
+			response: Message = from_bytes(connection.recv(1024))
+		except Exception as e:
+			print(e)
+			return
+
+		# create a working directory
+		self.create_job_dir(response.meta_data.job_id)
+
+		# fetch each required job file
+		for job_file in response.job_files:
+			self.file_request(job_file, connection)
+		print(response.meta_data.job_id)
+		print(response.meta_data.message_type)
+		print(response.payload)
+		print(response.job_files)
+		while True:
+			continue
+
+	def start(self):
+		"""
+		Poll network for job server (master)
+		"""
 		while True:
 			connection: socket.socket = None
 			while connection is None:
-				self.connection, HOST = attempt_master_connection(PORT)
+				connection, HOST = attempt_master_connection(PORT)
 				sleep(1)
-			print("Connection found")
-			msg = Message(MessageType.JOB_REQUEST)
-			self.connection.sendall(to_bytes(msg))
+			self.start_job(connection)
 			
-			response: Message = from_bytes(1024) #assume that response is 1024
-
 
 
 	
@@ -110,7 +143,7 @@ class slave_client():
 if __name__ == "__main__":
 	PORT = 9999
 	client: slave_client = slave_client()
-	client.job_listen()
+	client.start()
    
 
     # Connection established
