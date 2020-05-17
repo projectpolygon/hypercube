@@ -11,7 +11,6 @@ def connect(hostname, port):
     Connect to a hostname on given post
     """
     sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socket.setdefaulttimeout(0.05)
     result = sock.connect_ex((hostname, port))
     return sock, (result == 0)
@@ -24,7 +23,6 @@ def attempt_master_connection(master_port):
     network_id = get_ip_addr().rpartition('.')[0]
     for i in range(0, 255):
         hostname = network_id + "." + str(i)
-        hostname = "192.168.1.64"
         sock, connected = connect(hostname, master_port)
         if connected:
             print("Master found at: ", hostname + ':' + str(master_port))
