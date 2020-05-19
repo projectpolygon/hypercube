@@ -7,32 +7,33 @@ from pathlib import Path
 from shutil import rmtree
 
 def connect(hostname, port):
-    """
-    Connect to a hostname on given post
-    """
-    sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    socket.setdefaulttimeout(0.05)
-    result = sock.connect_ex((hostname, port))
-    return sock, (result == 0)
-
+	"""
+	Connect to a hostname on given post
+	"""
+	sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	socket.setdefaulttimeout(0.05)
+	result = sock.connect_ex((hostname, port))
+	return sock, (result == 0)
 
 def attempt_master_connection(master_port):
-    """
-    Attempt to find and connect to the master node
-    """
-    network_id = get_ip_addr().rpartition('.')[0]
-    for i in range(0, 255):
-        hostname = network_id + "." + str(i)
-        sock, connected = connect(hostname, master_port)
-        if connected:
-            print("Master found at: ", hostname + ':' + str(master_port))
-            sock.settimeout(None)
-            return sock, hostname
-        else:
-            print("Master not at: ", hostname + ':' + str(master_port))
-            sock.close()
-    return None, None
+	"""
+	Attempt to find and connect to the master node
+	"""
+	network_id = get_ip_addr().rpartition('.')[0]
+	print('') # print down a line so we dont overwrite something else
+	for i in range(0, 255):
+		hostname = network_id + "." + str(i)
+		sock, connected = connect(hostname, master_port)
+		if connected:
+			print("\rINF: master found at: ", hostname + ':' + str(master_port))
+			sock.settimeout(None)
+			return sock, hostname
+		else:
+			print("\rINF: master not at: ", hostname + ':' + str(master_port), end='')
+			sock.close()
+	return None, None
 
+#TODO this should be the method we use to transfer all files, we should rename it to something more representative
 def process_job(connection: socket.socket, job_size: int):
     """
     Recieve data from server and unpack it
@@ -40,13 +41,12 @@ def process_job(connection: socket.socket, job_size: int):
     chunks = []
     bytes_recieved = 0
     while bytes_recieved < job_size:
-        print(bytes_recieved)
         bytes_left = job_size - bytes_recieved
         # TODO the chunking can't just rely on the payload. 
         # Since the object must be account for as well!!!!
         chunk = connection.recv(min(bytes_left + 1000, 2048)) # NOTICE THE + 1000
         if chunk == b'':
-            print("connection lost... reconnecting")
+            print("WARN: connection lost... reconnecting")
             connected = False
             # recreate socket
             sock = socket.socket()
@@ -55,7 +55,7 @@ def process_job(connection: socket.socket, job_size: int):
                 try:
                     sock.connect((HOST, PORT))
                     connected = True
-                    print("re-connection successful")
+                    print("INF: re-connection successful")
                 except socket.error:
                     sleep(2)
 
@@ -67,16 +67,6 @@ def process_job(connection: socket.socket, job_size: int):
 	#data = msg.get_data()
     #print('Finished Processing Job')
     #return data
-
-
-def save_processed_data(job_id, data):
-    """
-    Write job bytes to file
-    """
-    path = create_job_dir(job_id) + "/job"
-    with open(path, "wb") as out_file:
-        print('Writing data to file:', path)
-        out_file.write(data)
 
 class slave_client():
 	"""
@@ -94,56 +84,79 @@ class slave_client():
 		path = "./job" + str(job_id)
 		rmtree(path=path, ignore_errors=True)
 		Path(path).mkdir(parents=True, exist_ok=False)
-		print('Created Job Dir', path)
 		return path
+
+	def save_processed_data(self, job_id, data):
+		"""
+		Write job bytes to file
+		"""
+		path = create_job_dir(job_id) + "/job"
+		with open(path, "wb") as out_file:
+			out_file.write(data)
 	
 	def file_get(self, filename, connection):
-		print("Asking for file: {}".format(filename))
-		msg = Message(MessageType.FILE_REQUEST)
-		msg.files = [filename]
+		print("INF: requesting file: {}".format(filename))
+		file_request = Message(MessageType.FILE_REQUEST)
+		file_request.files = [filename]
 
-		# send the FILE_REQUEST message
-		connection.sendall(to_bytes(msg))
-		sleep(1)
+		# Send FILE_REQUEST
+		connection.sendall(to_bytes(file_request))
 
-		# TODO: This may fail if the file isnt found!!!!
-		sync_response:Message = from_bytes(connection.recv(1024))
+		# Receive FILE_SYNC
+		file_sync : Message = from_bytes(connection.recv(1024))
+		expected_bytes = file_sync.meta_data.size
+		if file_sync.meta_data.message_type != MessageType.FILE_SYNC:
+			return
 
-		# parse the payload as an int
-		expected:int = int(sync_response.payload_size)
-		print("expecting file of size {}".format(expected))
+		# Send FILE_SYNC
+		file_sync_response : Message = Message(MessageType.FILE_SYNC)
+		connection.sendall(to_bytes(file_sync_response))
 
-		data = process_job(connection, expected)
-		print(data.test())
-		with open("./job" + str(data.job_id) + "/" + filename, 'wb') as new_file:
-			new_file.write(data.get_data())
-		# wait to receive the FILE_SYNC message
-
+		file_data = process_job(connection, expected_bytes)
+		with open("./job" + str(file_data.job_id) + "/" + filename, 'wb') as new_file:
+			new_file.write(file_data.get_payload())
+		
+		print("INF: requested file: {} downloaded".format(filename))
+		
 	def start_job(self, connection):
 		"""
 		Connection established, handle the job
 		"""
-		print("Connection found")
+		print("INF: connection made")
 		self.running = True
 		msg = Message(MessageType.JOB_REQUEST)
 		connection.sendall(to_bytes(msg))		
 		try:
-			response: Message = from_bytes(connection.recv(1024))
+            # receive JOB_SYNC from master
+			job_sync: Message = from_bytes(connection.recv(1024))
+            # TODO: error handling in case this is not enough to receive the whole sync
 		except Exception as e:
 			print(e)
 			return
-
+        
+		# Check the message type
+		if job_sync.meta_data.message_type != MessageType.JOB_SYNC:
+			return
+        
 		# create a working directory
-		self.create_job_dir(response.meta_data.job_id)
+		self.create_job_dir(job_sync.meta_data.job_id)
 
-		# fetch each required job file
-		for job_file in response.job_files:
+        # send JOB_SYNC
+		job_sync_response : Message = Message(MessageType.JOB_SYNC)
+		job_sync_response.meta_data.job_id = job_sync.meta_data.job_id
+		connection.sendall(to_bytes(job_sync_response))
+
+        # receive JOB_DATA
+		job_data:Message = process_job(connection, job_sync.meta_data.size)
+		if job_data.meta_data.message_type != MessageType.JOB_DATA:
+			return
+
+		# FILE_REQUEST for each file in JOB_DATA list of filenames
+		for job_file in job_data.job_files:
 			self.file_get(job_file, connection)
-		print(response.meta_data.job_id)
-		print(response.meta_data.message_type)
-		print(response.payload)
-		print(response.job_files)
+			
 		while True:
+			# TODO handle the rest of the job
 			continue
 
 	def start(self):

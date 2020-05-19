@@ -16,138 +16,85 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 	"""
     Handler created for each connection.
     Connection is closed when function returns
-
-    1) JOB REQUEST from slave
-    	- message from slave requesting job file
-
-	2) JOB_SYNC from master
-		- sends the job file METADATA to the slave
-
-	3) JOB_DATA from master
-		- send the job file ITSELF
-		- slave now knows the names of files it needs
-
-	4) FILE_REQUEST from slave (can happen as many time as required)
-		- request file from master
-
-	5) FILE_SYNC from master
-		- get info about the file size
-	
-	6) FILE_DATA from master
-		- actual file contents
-	.
-	.
-	.
-
-	5) TASK_REQUEST from slave
-		- ask for a task_file
-	6) TASK_SYNC from master
-		- message containing task JSON size
-	7) TASK_DATA from master
-		- actual task data
-	8) TASK_SYNC from slave
-		- contains the image size
-	9) TASK_DATA from slave
-		- contain the image itself
-	.
-	.
-	.
-	Final TASK_REQUEST
-	slave will receive JOB_END message
-	
-	
     """
 	
 	def send_job(self):
-		connection : socket.socket = self.request	
 		# Create JOB DATA message
-		#job_msg : Message = Message(MessageType.JOB_DATA, job_data)
-		job_msg = job_object.get_message()
-		size = 0
-		if job_msg.payload:
-			size = len(job_msg.payload)
-		data = job_msg.payload
-		#data = to_bytes(job_object)i
+		connection : socket.socket = self.request	
+		job_msg : Message = job_object.get_message()
 
-		# Create JOB SYNC message and send
-		#sync_msg = Message(MessageType.JOB_SYNC)
-		#sync_msg.meta_data.job_id = '1234'
-		#sync_msg.meta_data.size = size
-		#sync_msg.payload = ["test1.txt", "test2.txt"]
-		connection.sendall(to_bytes(job_msg))
+		# Encode JOB_DATA as bytes
+		job_msg_bytes = to_bytes(job_msg)
+		job_msg_len = len(job_msg_bytes)
 
-		# Send JOB DATA message
-		print('Sending job message (' + str(size) + ' bytes)')
-		total_sent = 0
-		while total_sent < size:
-			sent = connection.send(data[total_sent:])
-			if sent == 0:
-				continue
-			total_sent = total_sent + sent
+		# Send the JOB_SYNC message
+		sync_message: Message = Message(MessageType.JOB_SYNC)
+		sync_message.meta_data.job_id = job_msg.meta_data.job_id
+		sync_message.meta_data.size = job_msg_len
+		connection.sendall(to_bytes(sync_message))
+
+		# Receive the JOB_SYNC response
+		sync_response : Message = from_bytes(connection.recv(1024))
+		if sync_response.meta_data.message_type != MessageType.JOB_SYNC:
+			return
+
+		print("INF: connection synchronized")
+
+		# Send the JOB_DATA
+		connection.sendall(job_msg_bytes)
 
 	def send_file(self, message: Message):
-		connection : socket.socket = self.request	
+		connection : socket.socket = self.request
+
+		# FILE_REQUEST
 		if message.meta_data.message_type is not MessageType.FILE_REQUEST:
 			print(message.meta_data.message_type)
-			return None
+			return False
 		try:
-			print("Searching for {}".format(message.files[0]))
+			print("INF: sending file: {}".format(message.files[0]))
 			with open(message.files[0], 'rb') as reqfile:
 				reqdata = reqfile.read()
 
+				# Create FILE_DATA
 				data_msg:Message = Message(MessageType.FILE_DATA, reqdata)
 				data_msg.job_id = job_object.job_id
+				data_msg_bytes = to_bytes(data_msg)
+
+				# Create FILE_SYNC
 				sync_msg:Message = Message(MessageType.FILE_SYNC)
-				sync_msg.payload_size = len(reqdata)
+				sync_msg.meta_data.size = len(data_msg_bytes)
 
+				# Send FILE_SYNC
 				connection.sendall(to_bytes(sync_msg))
-				print("Sent SYNC")
-				sleep(2)
 
-				connection.sendall(to_bytes(data_msg))
-				print("Sent DATA")
+				# Recieve FILE_SYNC
+				sync_response: Message = from_bytes(connection.recv(1024))
+				if sync_response.meta_data.message_type != MessageType.FILE_SYNC:
+					return False
+
+				connection.sendall(data_msg_bytes)
+				print("INF: sent file: {}".format(message.files[0]))
 		except Exception as e:
 			print(e)
-			print("CRIT ERR: file was asked for, but not found")
-		#with file_to_send as open("r", message.payload):
+			print("ERR: file was asked for, but not found")
+			return False
 		
-		# parse message for filename
-		# open file
-		# read contents
-		# get filesize
-		# send filesize in SYNC message
-		# send file itself
-	
-	def send_task(self, message: Message):
-		if message.meta_data.message_type is not MessageType.TASK_REQUEST:
-			return None
-		# poll the global queue for a task
-		# if there is a task, SYNC the taskfile size
-			# then, send TASK FILE
-		# if there is no task, AND ALL JOBS ARE DONE END_JOB
+		return True
 
-#		pass
-#	def file_sync(self):
-#		pass
-#	def file_data(self):
-#		pass
-#	
-#	def task_request(self):
-#		pass
-#	def task_sync(self):
-#		pass
-#	def task_data(self):
-#		pass
+	def send_task(self, message: Message):
+		"""
+		Pull a task from the global queue and send it to the slave
+		"""
+		if message.meta_data.message_type is not MessageType.TASK_REQUEST:
+			return False
+		return True
 
 	def handle(self):
 		"""
 		Handle each new TCP connection
 		This will represent one complete session
 		"""
-		# JOB_REQUEST comes in
-		# slave_address, slave_message: Message = self.job_request()
-		# if not slave_message:
-		# return
+		# JOB_REQUEST
 		slave_address = str(self.client_address)
 
 		data = self.request.recv(1024)
@@ -160,34 +107,33 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 		if slave_message.meta_data.message_type is not MessageType.JOB_REQUEST:
 			return 
 
-		print("Client", slave_address, ": JOB_REQUEST")
+		print("INF: client", slave_address, ": connected")
 
 		# Add connection to dict with client_address as key
 		# self.request is the TCP socket connected to the client
 		connections[slave_address]: socket.socket = self.request
 		
-		# perform SYNC and DATA for job
+		# JOB_SYNC and JOB_DATA
 		self.send_job()
-		print("Job Sent")
+		print("INF: job sent")
 
 		# while connection live, allow file and task synchronization
 		while True:
-			# from this point on, the only message types to be expected
-			# are as follow:
-			# FILE_REQUEST
-			# TASK_REQUEST
-			# TASK_SYNC
-			# TASK_DATA
 			# wait for job_sync from client, indicating job is done
 			data = self.request.recv(1024)
 			if not data:
 				continue
 			slave_msg: Message = from_bytes(data)
 
-			self.send_file(slave_msg)
-			self.send_task(slave_msg)
+			# handle FILE_REQUEST
+			status = self.send_file(slave_msg)
+			if not status:
+				break
 
-			print("Message", slave_address, "->", slave_msg.get_data())
+			# handle TASK_REQUEST
+			status = self.send_task(slave_msg)
+			if not status:
+				break
 
 		# Remove connection from dict after disconnect
 		connections[slave_address] = None
@@ -198,7 +144,6 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     Class extends TCPServer with Threading capabilities
     """
     pass
-
 
 def get_job():
 	while True:
@@ -215,10 +160,10 @@ def get_job():
 
 if __name__ == "__main__":
 	if len(sys.argv) != 2:
-		print("ERROR: expected 2 arguments")
+		print("ERR: expected 2 arguments")
 		sys.exit()
 	
-	# load the jobfile
+	# load the jobfile and wrap it in an object that we can manipulate	
 	job_object : Job = get_job()
 	HOST, PORT = get_ip_addr(), 9999
 
@@ -226,20 +171,20 @@ if __name__ == "__main__":
 	ThreadedTCPServer.allow_reuse_address = True
 	server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
 	with server:
-		# Start a thread with the server -- that thread will then start
-		# another thread for each request
+		# each connection handled in its own thread
 		server_thread = threading.Thread(target=server.serve_forever)
 		# Exit the server thread when the main thread terminates
 		server_thread.daemon = True
 		server_thread.start()
-		print("Server loop running in thread:", server_thread.name)
+		print("INF: server running in thread:", server_thread.name)
 		running = server_thread.is_alive()
 		while running:
 			try:
 				running = server_thread.is_alive()
 			except KeyboardInterrupt:
-				print("\nGraceful shutdown...")
+				print("\nINF: Graceful shutdown...")
 				break
 		server.shutdown()
 		server.server_close()
+	print("INF: job complete")
 

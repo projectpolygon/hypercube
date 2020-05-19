@@ -13,8 +13,8 @@ class MessageType(Enum):
 	FILE_REQUEST = 4
 	FILE_SYNC = 5
 	FILE_DATA = 6
-	TASK_REQUEST = 7 # From slave to master
-	TASK_SYNC = 8 # submit and return
+	TASK_REQUEST = 7 
+	TASK_SYNC = 8
 	TASK_DATA = 9
 	JOB_END = 10
 
@@ -52,37 +52,45 @@ class Message:
 	Upon creation: prepares message transfer by compressing data
 	and generating meta data
 	"""
-	def __init__(self, message_type: MessageType, data = None):
-		self.files = []
-		self.payload_size = 0
+	def __init__(self, message_type: MessageType, new_payload = None):
 		self.payload = None
-		if data is not None:
-			# Compress Data
-			self.payload = compress(data)
-			# Generate Meta Data
+		
 		meta_data = MessageMetaData()
 		meta_data.message_type = message_type
-		meta_data.size = getsizeof(data)
+		meta_data.size = getsizeof(new_payload)
 		meta_data.compressed_size = getsizeof(self.payload)
 		self.meta_data = meta_data
 
-	def set_data(self, new_data):
+		self.filenames = []
+		
+		self.payload_size = 0
+		if new_payload is not None:
+			# Compress Data
+			self.payload = compress(new_payload)
+			self.payload_size = len(new_payload)
+			# Generate Meta Data
+
+	def set_payload(self, new_data):
 		"""
 		Add new data (and maintain compression)
 		"""
+		self.payload_size = len(new_data)
 		self.payload = compress(new_data)
 
-	def get_data(self):
+	def get_payload(self):
 		"""
 		Returns the original data
 		"""
 		return decompress(self.payload) if self.payload is not None else None
+	
+	def get_payload_size(self):
+		return self.payload_size
 
-	def test(self):
+	def get_readable(self):
 		"""
 		Used for testing Message
 		Prints out Message in readable format
 		"""
 		print("Message Meta Data:", self.meta_data.get_readable())
 		print("Payload (Compressed):", self.payload)
-		print("Original Data:", self.get_data())
+		print("Original Data:", self.get_payload())

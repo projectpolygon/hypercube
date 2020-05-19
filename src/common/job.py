@@ -16,9 +16,9 @@ class Job():
 		self.job_id = self.parsed_file.get("job_id")
 	
 	def get_message(self):
-		message = Message(MessageType.JOB_SYNC)
+		message = Message(MessageType.JOB_DATA)
 		message.meta_data.job_id = self.parsed_file.get("job_id")
-		message.job_files = self.parsed_file.get("files")
+		message.job_files = self.parsed_file.get("filenames")
 		return message
 
 if __name__ == "__main__":

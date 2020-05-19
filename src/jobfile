@@ -1,7 +1,7 @@
 {
-	"type":"JOB_SYNC",
+	"type":"JOB_DATA",
 	"job_id":69420,
-	"files":[
+	"filenames":[
 		"jobfile"
 		],
 	"payload":""
