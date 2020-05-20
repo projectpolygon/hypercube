@@ -42,9 +42,7 @@ def process_job(connection: socket.socket, job_size: int):
     bytes_recieved = 0
     while bytes_recieved < job_size:
         bytes_left = job_size - bytes_recieved
-        # TODO the chunking can't just rely on the payload. 
-        # Since the object must be account for as well!!!!
-        chunk = connection.recv(min(bytes_left + 1000, 2048)) # NOTICE THE + 1000
+        chunk = connection.recv(min(bytes_left, 2048))
         if chunk == b'':
             print("WARNING: connection lost... reconnecting")
             connected = False
