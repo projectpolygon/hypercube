@@ -54,21 +54,21 @@ class Message:
 	"""
 	def __init__(self, message_type: MessageType, new_payload = None):
 		self.payload = None
-		
-		meta_data = MessageMetaData()
-		meta_data.message_type = message_type
-		meta_data.size = getsizeof(new_payload)
-		meta_data.compressed_size = getsizeof(self.payload)
-		self.meta_data = meta_data
-
-		self.filenames = []
-		
+		self.filenames = []	
 		self.payload_size = 0
+
+		# if a payload has been passed in, set it
 		if new_payload is not None:
 			# Compress Data
 			self.payload = compress(new_payload)
 			self.payload_size = len(new_payload)
 			# Generate Meta Data
+
+		meta_data = MessageMetaData()
+		meta_data.message_type = message_type
+		meta_data.size = getsizeof(new_payload) 
+		meta_data.compressed_size = getsizeof(self.payload)
+		self.meta_data = meta_data
 
 	def set_payload(self, new_data):
 		"""
