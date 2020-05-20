@@ -10,7 +10,7 @@ All files specified in the jobfile must be contained in the 'src' directory
 
 ## Testing
 Tests are run throuhg *pytest*
-To install: pip install pytest
+To install: `pip install pytest`
 To run: `$ src/pytest`
 
 ## Docker  
