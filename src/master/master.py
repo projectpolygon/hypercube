@@ -38,7 +38,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 		if sync_response.meta_data.message_type != MessageType.JOB_SYNC:
 			return
 
-		print("INF: connection synchronized")
+		print("INFO: connection synchronized")
 
 		# Send the JOB_DATA
 		connection.sendall(job_msg_bytes)
@@ -51,7 +51,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 			print(message.meta_data.message_type)
 			return False
 		try:
-			print("INF: sending file: {}".format(message.files[0]))
+			print("INFO: sending file: {}".format(message.files[0]))
 			with open(message.files[0], 'rb') as reqfile:
 				reqdata = reqfile.read()
 
@@ -73,10 +73,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 					return False
 
 				connection.sendall(data_msg_bytes)
-				print("INF: sent file: {}".format(message.files[0]))
+				print("INFO: sent file: {}".format(message.files[0]))
 		except Exception as e:
 			print(e)
-			print("ERR: file was asked for, but not found")
+			print("ERROR: file was asked for, but not found")
 			return False
 		
 		return True
@@ -107,7 +107,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 		if slave_message.meta_data.message_type is not MessageType.JOB_REQUEST:
 			return 
 
-		print("INF: client", slave_address, ": connected")
+		print("INFO: client", slave_address, ": connected")
 
 		# Add connection to dict with client_address as key
 		# self.request is the TCP socket connected to the client
@@ -115,7 +115,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 		
 		# JOB_SYNC and JOB_DATA
 		self.send_job()
-		print("INF: job sent")
+		print("INFO: job sent")
 
 		# while connection live, allow file and task synchronization
 		while True:
@@ -150,17 +150,17 @@ def get_job():
 		try:
 			with open(sys.argv[1], 'rb') as jobfile:
 				data = jobfile.read()
-				print("INF: jobfile size (uncmp): {}".format(len(data)))
+				print("INFO: jobfile size (uncmp): {}".format(len(data)))
 				job = Job()
 				job.load_from_bytes(data)
 				return job
 		except Exception as e:
 			print(e)
-			print("ERR: jobfile not found")
+			print("ERROR: jobfile not found")
 
 if __name__ == "__main__":
 	if len(sys.argv) != 2:
-		print("ERR: expected 2 arguments")
+		print("ERROR: expected 2 arguments")
 		sys.exit()
 	
 	# load the jobfile and wrap it in an object that we can manipulate	
@@ -176,15 +176,15 @@ if __name__ == "__main__":
 		# Exit the server thread when the main thread terminates
 		server_thread.daemon = True
 		server_thread.start()
-		print("INF: server running in thread:", server_thread.name)
+		print("INFO: server running in thread:", server_thread.name)
 		running = server_thread.is_alive()
 		while running:
 			try:
 				running = server_thread.is_alive()
 			except KeyboardInterrupt:
-				print("\nINF: Graceful shutdown...")
+				print("\nINFO: Graceful shutdown...")
 				break
 		server.shutdown()
 		server.server_close()
-	print("INF: job complete")
+	print("INFO: job complete")
 

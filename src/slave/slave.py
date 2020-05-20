@@ -25,11 +25,11 @@ def attempt_master_connection(master_port):
 		hostname = network_id + "." + str(i)
 		sock, connected = connect(hostname, master_port)
 		if connected:
-			print("\rINF: master found at: ", hostname + ':' + str(master_port))
+			print("\rINFO: master found at: ", hostname + ':' + str(master_port))
 			sock.settimeout(None)
 			return sock, hostname
 		else:
-			print("\rINF: master not at: ", hostname + ':' + str(master_port), end='')
+			print("\rINFO: master not at: ", hostname + ':' + str(master_port), end='')
 			sock.close()
 	return None, None
 
@@ -46,7 +46,7 @@ def process_job(connection: socket.socket, job_size: int):
         # Since the object must be account for as well!!!!
         chunk = connection.recv(min(bytes_left + 1000, 2048)) # NOTICE THE + 1000
         if chunk == b'':
-            print("WARN: connection lost... reconnecting")
+            print("WARNING: connection lost... reconnecting")
             connected = False
             # recreate socket
             sock = socket.socket()
@@ -55,7 +55,7 @@ def process_job(connection: socket.socket, job_size: int):
                 try:
                     sock.connect((HOST, PORT))
                     connected = True
-                    print("INF: re-connection successful")
+                    print("INFO: re-connection successful")
                 except socket.error:
                     sleep(2)
 
@@ -95,7 +95,7 @@ class slave_client():
 			out_file.write(data)
 	
 	def file_get(self, filename, connection):
-		print("INF: requesting file: {}".format(filename))
+		print("INFO: requesting file: {}".format(filename))
 		file_request = Message(MessageType.FILE_REQUEST)
 		file_request.files = [filename]
 
@@ -122,7 +122,7 @@ class slave_client():
 		"""
 		Connection established, handle the job
 		"""
-		print("INF: connection made")
+		print("INFO: connection made")
 		self.running = True
 		msg = Message(MessageType.JOB_REQUEST)
 		connection.sendall(to_bytes(msg))		
@@ -169,32 +169,8 @@ class slave_client():
 				connection, HOST = attempt_master_connection(PORT)
 				sleep(1)
 			self.start_job(connection)
-			
-
-
-	
 
 if __name__ == "__main__":
 	PORT = 9999
 	client: slave_client = slave_client()
 	client.start()
-   
-
-    # Connection established
-    # Create Job Request Message and send
-    #msg = Message(MessageType.JOB_REQUEST)
-    #connection.sendall(to_bytes(msg))
-    #response: Message = from_bytes(connection.recv(1024))
-
-    # wait for job sync message
-    #while response.meta_data.message_type is not MessageType.JOB_SYNC:
-    #    continue
-
-    #processed_data = process_job(connection, response.meta_data.size)
-
-    #if processed_data is not None:
-    #    save_processed_data(response.meta_data.job_id, processed_data)
-
-    #connection.sendall(
-    #    to_bytes(Message(MessageType.JOB_SYNC, b'Finished Processing, goodbye')))
-    #connection.close()
