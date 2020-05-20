@@ -1,0 +1,10 @@
+{
+	"type":"JOB_SYNC",
+	"job_id":69420,
+	"files":[
+		"common/api/new_job.json",
+		"common/api/new_job.json",
+		"common/api/new_job.json"
+		],
+	"payload":""
+}
