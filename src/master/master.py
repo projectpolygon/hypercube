@@ -52,11 +52,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 			return False
 		try:
 			print("INFO: sending file: {}".format(message.files[0]))
-			with open(message.files[0], 'rb') as reqfile:
-				reqdata = reqfile.read()
+			with open(message.files[0], 'rb') as requested_file:
+				requested_file_data = requested_file.read()
 
 				# Create FILE_DATA
-				data_msg:Message = Message(MessageType.FILE_DATA, reqdata)
+				data_msg: Message = Message(MessageType.FILE_DATA, requested_file_data)
 				data_msg.job_id = job_object.job_id
 				data_msg_bytes = to_bytes(data_msg)
 
