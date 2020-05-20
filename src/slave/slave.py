@@ -62,9 +62,6 @@ def process_job(connection: socket.socket, job_size: int):
     data_recieved = b''.join(chunks)
     msg: Message = from_bytes(data_recieved)
     return msg
-	#data = msg.get_data()
-    #print('Finished Processing Job')
-    #return data
 
 class slave_client():
 	"""
