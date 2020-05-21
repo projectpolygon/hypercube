@@ -1,6 +1,7 @@
 import json
 from common.message import *
 
+
 class Job():
 	def load_from_file(self, path):
 		try:
