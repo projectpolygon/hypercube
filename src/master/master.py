@@ -1,190 +1,121 @@
-import threading
-from time import sleep
-import socketserver
-import socket
-from common.message import Message, MessageType
+import os
+from flask import Flask, request, Response, jsonify
+import json
+import base64
 from common.networking import *
-from common.job import *
-from pickle import dumps as to_bytes, loads as from_bytes
-from pathlib import Path
-import sys
+from common import *
 
-# dict to keep track of live connections
-connections = {}
+class HyperMaster():
 
-class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
-	"""
-    Handler created for each connection.
-    Connection is closed when function returns
-    """
+	def __init__(self, HOST="0.0.0.0", PORT=5678):
+		self.HOST = HOST
+		self.PORT = PORT
+		self.test_config = None
+
+	def start_server(self):
+		app = create_app(self)
+		app.run(host=self.HOST, port=self.PORT, debug=True)
 	
-	def send_job(self):
-		# Create JOB DATA message
-		connection : socket.socket = self.request	
-		job_msg : Message = job_object.get_message()
+	def set_job_get_handle(self):
+		pass
+	
+	def set_task_get_handle(self):
+		pass
 
-		# Encode JOB_DATA as bytes
-		job_msg_bytes = to_bytes(job_msg)
-		job_msg_len = len(job_msg_bytes)
+	def set_file_get_handle(self):
+		pass
+	
+	
+# OVERLOADED DO NOT RENAME
+def create_app(hypermaster : HyperMaster):
+	
+	# create and configure the Flask app
+	app = Flask(__name__, instance_relative_config=True)
+	app.config.from_mapping(SECRET_KEY='dev')
 
-		# Send the JOB_SYNC message
-		sync_message: Message = Message(MessageType.JOB_SYNC)
-		sync_message.meta_data.job_id = job_msg.meta_data.job_id
-		sync_message.meta_data.size = job_msg_len
-		connection.sendall(to_bytes(sync_message))
+	# load configurations if any exist (for Flask config)
+	if hypermaster.test_config is None:
+	# load the instance config, if it exists, when not testing
+		app.config.from_pyfile('config.py', silent=True)
+	else:
+		# load the test config if passed in
+		app.config.from_mapping(hypermaster.test_config)
+	
+	job_file_name = ""
+	if "HYPER_JOBFILE_NAME" in os.environ:
+		print("INFO: using environment varible to set jobfile")
+		job_file_name = os.environ.get("HYPER_JOBFILE_NAME")
+	else:
+		print("USING jobfile")
+		job_file_name = "jobfile"
 
-		# Receive the JOB_SYNC response
-		sync_response : Message = from_bytes(connection.recv(1024))
-		if sync_response.meta_data.message_type != MessageType.JOB_SYNC:
-			return
+	# ensure the instance folder exists so configurations can be added
+	try:
+		os.makedirs(app.instance_path)
+	except OSError:
+		pass
 
-		print("INFO: connection synchronized")
+	# create the endpoints
+	create_routes(hypermaster, app, job_file_name)
 
-		# Send the JOB_DATA
-		connection.sendall(job_msg_bytes)
+	return app
 
-	def send_file(self, message: Message):
-		connection : socket.socket = self.request
+# TODO these functions might be better suited as member functions
+def create_routes(hypermaster, app, job_file_name):
+    
+	# TODO: replace with something better, maybe persistence??
+	jobs = []
 
-		# FILE_REQUEST
-		if message.meta_data.message_type is not MessageType.FILE_REQUEST:
-			print(message.meta_data.message_type)
-			return False
-		try:
-			print("INFO: sending file: {}".format(message.files[0]))
-			with open(message.files[0], 'rb') as requested_file:
-				requested_file_data = requested_file.read()
-
-				# Create FILE_DATA
-				data_msg: Message = Message(MessageType.FILE_DATA, requested_file_data)
-				data_msg.job_id = job_object.job_id
-				data_msg_bytes = to_bytes(data_msg)
-
-				# Create FILE_SYNC
-				sync_msg:Message = Message(MessageType.FILE_SYNC)
-				sync_msg.meta_data.size = len(data_msg_bytes)
-
-				# Send FILE_SYNC
-				connection.sendall(to_bytes(sync_msg))
-
-				# Recieve FILE_SYNC
-				sync_response: Message = from_bytes(connection.recv(1024))
-				if sync_response.meta_data.message_type != MessageType.FILE_SYNC:
-					return False
-
-				connection.sendall(data_msg_bytes)
-				print("INFO: sent file: {}".format(message.files[0]))
-		except Exception as e:
-			print(e)
-			print("ERROR: file was asked for, but not found")
-			return False
+	# JOB_GET
+	@app.route("/JOB_GET", methods=["GET", "POST"])
+	def job_get():
+		with open(job_file_name, "r") as job_file:
+			# read and parse the JSON 
+			job_json = json.loads(job_file.read())
 		
-		return True
+			if request.is_json:
+				content = request.json()
+				# GLOBAL for tracking slaves
+				jobs.append(content)
 
-	def send_task(self, message: Message):
-		"""
-		Pull a task from the global queue and send it to the slave
-		"""
-		if message.meta_data.message_type is not MessageType.TASK_REQUEST:
-			return False
-		return True
-
-	def handle(self):
-		"""
-		Handle each new TCP connection
-		This will represent one complete session
-		"""
-		# JOB_REQUEST
-		slave_address = str(self.client_address)
-
-		data = self.request.recv(1024)
-		if not data:
-			return 
-
-		# depickle the object
-		slave_message: Message = from_bytes(data)
-
-		if slave_message.meta_data.message_type is not MessageType.JOB_REQUEST:
-			return 
-
-		print("INFO: client", slave_address, ": connected")
-
-		# Add connection to dict with client_address as key
-		# self.request is the TCP socket connected to the client
-		connections[slave_address]: socket.socket = self.request
+			# TODO: implement exception handling
+			return jsonify(job_json)
+	
+	# FILE_GET
+	@app.route("/FILE_GET/<int:job_id>/<string:file_name>", methods=["GET"])
+	def file_get(job_id:int, file_name:str):
+		print("INFO: sending {} as part of job {}".format(file_name, job_id))
 		
-		# JOB_SYNC and JOB_DATA
-		self.send_job()
-		print("INFO: job sent")
+		# dictionary for response to the slave
+		file_data = {"job_id":job_id, "file_name":file_name, "payload":None}
 
-		# while connection live, allow file and task synchronization
-		while True:
-			# wait for job_sync from client, indicating job is done
-			data = self.request.recv(1024)
-			if not data:
-				continue
-			slave_msg: Message = from_bytes(data)
+		# encode as base64, but decode as ASCII so it can be transferred over JSON
+		with open(file_name, "rb") as file:
+			file_data["payload"] = base64.b64encode(file.read()).decode("ascii")
+			return jsonify(file_data)
 
-			# handle FILE_REQUEST
-			status = self.send_file(slave_msg)
-			if not status:
-				break
+	# TASK_GET
+	@app.route("/TASK_GET/<int:job_id>", methods=["GET"])
+	def task_get(job_id: int):
+		content = request.json
+		# read the message for information
+		# fetch task from the queue
+		# return this task "formatted" back to slave
 
-			# handle TASK_REQUEST
-			status = self.send_task(slave_msg)
-			if not status:
-				break
-
-		# Remove connection from dict after disconnect
-		connections[slave_address] = None
-
-
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    """
-    Class extends TCPServer with Threading capabilities
-    """
-    pass
-
-def get_job():
-	while True:
-		try:
-			with open(sys.argv[1], 'rb') as jobfile:
-				data = jobfile.read()
-				print("INFO: jobfile size (uncmp): {}".format(len(data)))
-				job = Job()
-				job.load_from_bytes(data)
-				return job
-		except Exception as e:
-			print(e)
-			print("ERROR: jobfile not found")
+	# TASK_DATA
+	@app.route("/TASK_DATA/<int:job_id>/<int:task_id>", methods=["POST"])
+	def task_data(job_id:int, task_id:int):
+		message_data = request.json
+		# read rest of data as JSON and pass payload to application
+		# return 200 ok
+	
+	@app.route("/HEARTBEAT")
+	def heartbeat():
+		json_message = {"ip": get_ip_addr(),"status":200}
+		response_message = Response(json_message, status=200)
+		return response_message
 
 if __name__ == "__main__":
-	if len(sys.argv) != 2:
-		print("ERROR: expected 2 arguments")
-		sys.exit()
-	
-	# load the jobfile and wrap it in an object that we can manipulate	
-	job_object : Job = get_job()
-	HOST, PORT = get_ip_addr(), 9999
-
-	# speeds up debugging when a port is in use
-	ThreadedTCPServer.allow_reuse_address = True
-	server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
-	with server:
-		# each connection handled in its own thread
-		server_thread = threading.Thread(target=server.serve_forever)
-		# Exit the server thread when the main thread terminates
-		server_thread.daemon = True
-		server_thread.start()
-		print("INFO: server running in thread:", server_thread.name)
-		running = server_thread.is_alive()
-		while running:
-			try:
-				running = server_thread.is_alive()
-			except KeyboardInterrupt:
-				print("\nINFO: Graceful shutdown...")
-				break
-		server.shutdown()
-		server.server_close()
-	print("INFO: job complete")
-
+	# create the hypermaster and start the server
+	server = HyperMaster()
+	server.start_server()
