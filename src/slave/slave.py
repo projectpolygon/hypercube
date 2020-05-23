@@ -11,10 +11,13 @@ def connect(hostname, port):
 	Connect to a hostname on given post
 	"""
 	try:
+		# try for a response within 0.05
 		req = requests.get("http://{}:{}/HEARTBEAT".format(hostname, port), timeout=0.05)
+		# 200 okay returned, heartbeat at this address succeeded
 		if req.status_code == 200:
 			return True
 	except Exception as e:
+		# allows breaking out of the loop
 		if e == KeyboardInterrupt:
 			throw	
 	return False
@@ -41,9 +44,9 @@ class slave_client():
 	When the slave is started, this class should be what the user application
 	can import to begin using the features of the system on the slave itself
 	"""
-	def __init__(self, master_port=5678):
+	def __init__(self, PORT=5678):
 		self.HOST = ""
-		self.master_port = master_port
+		self.PORT = PORT
 		self.job_id = 0
 	
 	def create_job_dir(self):
@@ -66,7 +69,7 @@ class slave_client():
 	def file_get(self, file_name):
 		print("INFO: requesting file: {}".format(file_name))
 		file_request = requests.get("http://{}:{}/FILE_GET/{}/{}"
-			.format(self.HOST, self.master_port, self.job_id, file_name))
+			.format(self.HOST, self.PORT, self.job_id, file_name))
 		if not file_request:
 			print("ERR: file was not returned")
 			return False
@@ -82,30 +85,33 @@ class slave_client():
 		"""
 		print("INFO: connection made")
 		# JOB_GET
-		job_request = requests.get("http://{}:{}/JOB_GET".format(self.HOST, self.master_port))
+		job_request = requests.get("http://{}:{}/JOB_GET".format(self.HOST, self.PORT), timeout=5)
 		
 		# don't continue we have no job
 		if not job_request:
 			return
 
 		# parse as JSON
-		job_json = job_request.json()
-
-		# Get the data from the message
-		self.job_id: int = job_json.get("job_id")
-		job_files: list = job_json.get("file_names")
+		try:
+			job_json = job_request.json()
+			self.job_id: int = job_json.get("job_id")
+			job_file_names: list = job_json.get("file_names")
+		except:
+			print("ERR: job data JSON not received. Cannot continue")
+			return
 		
 		# create a working directory
 		self.create_job_dir()
 
 		# FILE_REQUEST for each file in JOB_DATA list of filenames
-		for file_name in job_files:
+		for file_name in job_file_names:
 			self.file_get(file_name)
 					
 		while True:
 			# TODO handle the rest of the job
 			# TASK_GET
 			# TASK_DATA
+			sleep(1)
 			continue
 
 	def start(self):
@@ -114,14 +120,18 @@ class slave_client():
 		"""
 		self.HOST = None
 		while self.HOST is None:
-			self.HOST= attempt_master_connection(self.master_port)
+			self.HOST= attempt_master_connection(self.PORT)
 			sleep(1)
 		self.handle_job()
 
 if __name__ == "__main__":
-	PORT=5678
+	master_port=5678
 	if len(sys.argv) == 2:
-		PORT = sys.argv[1]
+		master_port = sys.argv[1]
 	while True:
-		client: slave_client = slave_client(PORT)
-		client.start()
+		try:
+			client: slave_client = slave_client(master_port)
+			client.start()
+		except KeyboardInterrupt as e:
+			print("\nINFO: graceful shutdown...")
+			break
