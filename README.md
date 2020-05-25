@@ -5,7 +5,8 @@ A network distributed graphics engine for an use with an array of independant ma
 To run, from the src directory `python -m slave.slave`
 
 ## Master
-To run, from the src directory `python -m master.master <jobfile>`
+To run, from the src directory:
+`python -m master.master`
 All files specified in the jobfile must be contained in the 'src' directory
 
 ## Testing

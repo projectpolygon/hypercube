@@ -1,5 +1,6 @@
 # sent over job files
 job*/
+src/instance/
 
 ### Generic gitignores
 # Prerequisites

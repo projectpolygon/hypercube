@@ -1,8 +1,10 @@
 {
 	"type":"JOB_DATA",
-	"job_id":69420,
-	"filenames":[
-		"jobfile"
+	"job_id":1234,
+	"file_names":[
+		"thanos.jpg",
+		"large.jpg",
+		"vid.flv"
 		],
 	"payload":""
 }
