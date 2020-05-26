@@ -1,3 +1,5 @@
+![Build Pipeline](https://github.com/projectpolygon/hypercube/workflows/Build%20Pipeline/badge.svg)
+
 # hypercube
 A network distributed graphics engine for an use with an array of independant machines
 
