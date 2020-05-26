@@ -26,7 +26,7 @@ jobs:
       - name: Run Slave unit tests
         run: docker build -f "slave.Dockerfile" -t slave/unit_tests --target test-env . 
   
-  build and deploy:
+  build_and_deploy:
     # if the commit message doesnt contain [skip-ci] then run this job 
     if: "!contains(github.event.head_commit.message, '[skip-ci]')"
     name: Build Docker images and deploys them to DockerHub
