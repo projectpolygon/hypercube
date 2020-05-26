@@ -39,7 +39,7 @@ def attempt_master_connection(master_port):
 			print("\rINFO: master not at: ", hostname + ':' + str(master_port), end='')
 	return None 
 
-class slave_client():
+class HyperSlave():
 	"""
 	When the slave is started, this class should be what the user application
 	can import to begin using the features of the system on the slave itself
@@ -130,7 +130,7 @@ if __name__ == "__main__":
 		master_port = sys.argv[1]
 	while True:
 		try:
-			client: slave_client = slave_client(master_port)
+			client: HyperSlave = HyperSlave(master_port)
 			client.start()
 		except KeyboardInterrupt as e:
 			print("\nINFO: graceful shutdown...")
