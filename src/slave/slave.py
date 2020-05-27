@@ -1,9 +1,11 @@
 import sys
 import requests
 import base64
+import shlex
 from common.networking import *
 from pathlib import Path
 from shutil import rmtree
+from subprocess import run
 from time import sleep
 
 def connect(hostname, port):
@@ -123,6 +125,15 @@ class HyperSlave():
 			self.HOST= attempt_master_connection(self.PORT)
 			sleep(1)
 		self.handle_job()
+
+	def run_cpp(command):
+		"""
+		Execute a c++ executable and create a result file
+		"""
+		args = shlex.split(command)
+
+		with open('result.txt', "w") as f:
+			run(args, stdout=f, stderr=f, text=True)
 
 if __name__ == "__main__":
 	master_port=5678
