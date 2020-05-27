@@ -12,20 +12,24 @@ To run, from the src directory:
 All files specified in the jobfile must be contained in the 'src' directory
 
 ## Testing
-Tests are run throuhg *pytest*
+Tests are run through [**pytest**](https://docs.pytest.org/en/latest/)
+
 To install: `pip install pytest`
-To run: `$ src/pytest`
+
+To run: `pytest` 
 
 ## Docker  
-A ubuntu based container with support for opengl and python.
+Build and run docker images for Hypercube master and slave locally
 ### Build  
-To build the Docker container navigate to the hypercube directory and run the following command.  
-`sudo docker build -t hypercube .`  
+To build the Docker images navigate to the hypercube directory and run the following:
+#### Master
+`docker build --rm -f "master.Dockerfile" -t hypercube:master "."` 
+#### Slave
+`docker build --rm -f "slave.Dockerfile" -t hypercube:slave "."` 
 
 ### Run  
-To Run the Docker container without a specific task to run use the following command.  
-`sudo docker run -it hypercube`  
-Otherwise if you wish to run a specific command use the following command.  
-`sudo docker run -it hypercube <my app>`  
-Example to run the slave application: `sudo docker run -it hypercube python3 -m slave.slave`  
-
+To run the built Docker images navigate to the hypercube directory and run the following:
+#### Master
+`docker run -it -p 5678:5678 hypercube:master` 
+#### Slave
+`docker run -it hypercube:slave` 
