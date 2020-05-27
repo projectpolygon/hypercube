@@ -33,6 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      -  uses: actions/checkout@v2
+         
       - name: Build Master image
         run: docker build --rm -f "master.Dockerfile" -t hypercube:master "."
     
