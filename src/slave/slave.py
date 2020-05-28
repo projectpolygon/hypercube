@@ -2,7 +2,7 @@ import sys
 import requests
 import base64
 import shlex
-# from common.networking import *
+from common.networking import *
 from pathlib import Path
 from shutil import rmtree
 from subprocess import run
@@ -133,7 +133,7 @@ class HyperSlave():
 		"""
 		args = shlex.split(command)
 
-		with open('result.txt', "w") as f:
+		with open('ApplicationResultLog.txt', "w") as f:
 			output = run(args, stdout=f, stderr=f, text=True)
 
 		return output.returncode

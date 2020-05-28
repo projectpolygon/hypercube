@@ -3,7 +3,7 @@ job*/
 src/instance/
 
 # slave result file
-**/result.txt
+**/ApplicationResultLog.txt
 
 ### Generic gitignores
 # Prerequisites
