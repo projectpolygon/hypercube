@@ -126,7 +126,7 @@ class HyperSlave():
 			sleep(1)
 		self.handle_job()
 
-	def run_shell_command(command):
+	def run_shell_command(self, command):
 		"""
 		Execute a shell command outputing stdout/stderr to a result.txt file.
 		Returns the shell commands returncode.
