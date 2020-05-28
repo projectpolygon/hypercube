@@ -2,7 +2,7 @@ import sys
 import requests
 import base64
 import shlex
-from common.networking import *
+# from common.networking import *
 from pathlib import Path
 from shutil import rmtree
 from subprocess import run
@@ -126,14 +126,17 @@ class HyperSlave():
 			sleep(1)
 		self.handle_job()
 
-	def run_cpp(command):
+	def run_shell_command(command):
 		"""
-		Execute a c++ executable and create a result file
+		Execute a shell command outputing stdout/stderr to a result.txt file.
+		Returns the shell commands returncode.
 		"""
 		args = shlex.split(command)
 
 		with open('result.txt', "w") as f:
-			run(args, stdout=f, stderr=f, text=True)
+			output = run(args, stdout=f, stderr=f, text=True)
+
+		return output.returncode
 
 if __name__ == "__main__":
 	master_port=5678

@@ -2,6 +2,9 @@
 job*/
 src/instance/
 
+# slave result file
+**/result.txt
+
 ### Generic gitignores
 # Prerequisites
 *.d
