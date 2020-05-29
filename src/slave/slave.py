@@ -1,9 +1,11 @@
 import sys
 import requests
 import base64
+import shlex
 from common.networking import *
 from pathlib import Path
 from shutil import rmtree
+from subprocess import run
 from time import sleep
 
 def connect(hostname, port):
@@ -123,6 +125,18 @@ class HyperSlave():
 			self.HOST= attempt_master_connection(self.PORT)
 			sleep(1)
 		self.handle_job()
+
+	def run_shell_command(self, command):
+		"""
+		Execute a shell command outputing stdout/stderr to a result.txt file.
+		Returns the shell commands returncode.
+		"""
+		args = shlex.split(command)
+
+		with open('ApplicationResultLog.txt', "w") as f:
+			output = run(args, stdout=f, stderr=f, text=True)
+
+		return output.returncode
 
 if __name__ == "__main__":
 	master_port=5678
