@@ -120,7 +120,8 @@ def create_routes(hyper_master, app, job_file_name):
         """
         try:
             with open(file_name, "rb") as file:
-                print("INFO: sending {} as part of job {}".format(file_name, job_id))
+                print("INFO: sending {} as part of job {}".format(
+                    file_name, job_id))
                 file_data = file.read()
                 compressed_data = compress(file_data)
                 return send_file(
@@ -129,7 +130,7 @@ def create_routes(hyper_master, app, job_file_name):
                     as_attachment=True,
                     attachment_filename=file_name
                 )
-                
+
         except CompressException as e:
             print('Err:', e)
             return Response(status=500)

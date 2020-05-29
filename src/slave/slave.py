@@ -38,10 +38,12 @@ def attempt_master_connection(master_port):
         hostname = network_id + "." + str(i)
         connected = connect(hostname, master_port)
         if connected:
-            print("\rINFO: master found at: ", hostname + ':' + str(master_port))
+            print("\rINFO: master found at: ",
+                  hostname + ':' + str(master_port))
             return hostname
         else:
-            print("\rINFO: master not at: ", hostname + ':' + str(master_port), end='')
+            print("\rINFO: master not at: ", hostname +
+                  ':' + str(master_port), end='')
     return None
 
 
@@ -91,7 +93,7 @@ class HyperSlave():
             return False
 
         print("INFO: File: {} recieved. Saving now...".format(file_name))
-        
+
         try:
             file_data = decompress(file_request.content)
         except DecompressException as e:
@@ -147,18 +149,18 @@ class HyperSlave():
             sleep(1)
         self.handle_job()
 
+    def run_shell_command(self, command):
+        """
+        Execute a shell command outputing stdout/stderr to a result.txt file.
+        Returns the shell commands returncode.
+        """
+        args = shlex.split(command)
 
-	def run_shell_command(self, command):
-		"""
-		Execute a shell command outputing stdout/stderr to a result.txt file.
-		Returns the shell commands returncode.
-		"""
-		args = shlex.split(command)
+        with open('ApplicationResultLog.txt', "w") as f:
+            output = run(args, stdout=f, stderr=f, text=True)
 
-		with open('ApplicationResultLog.txt', "w") as f:
-			output = run(args, stdout=f, stderr=f, text=True)
+        return output.returncode
 
-		return output.returncode
 
 if __name__ == "__main__":
     master_port = 5678
