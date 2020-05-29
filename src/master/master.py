@@ -4,7 +4,7 @@ from io import BytesIO
 import json
 from common.networking import *
 from common import *
-from zlib import compress
+from zlib import compress, error as CompressException
 
 
 class HyperMaster():
@@ -129,9 +129,18 @@ def create_routes(hyper_master, app, job_file_name):
                     as_attachment=True,
                     attachment_filename=file_name
                 )
-        except Exception as e:
-            print(e)
+                
+        except CompressException as e:
+            print('Err:', e)
+            return Response(status=500)
+
+        except FileNotFoundError as e:
+            print('Err:', e)
             return Response(status=404)
+
+        except Exception as e:
+            print('Err:', e)
+            return Response(status=500)
 
     # TASK_GET
     @app.route("/TASK_GET/<int:job_id>", methods=["GET"])

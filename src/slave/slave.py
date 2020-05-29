@@ -4,7 +4,7 @@ from common.networking import *
 from pathlib import Path
 from shutil import rmtree
 from time import sleep
-from zlib import decompress
+from zlib import decompress, error as DecompressException
 
 
 def connect(hostname, port):
@@ -68,8 +68,12 @@ class HyperSlave():
         """
         Write job bytes to file
         """
-        with open("./job" + str(self.job_id) + "/" + file_name, 'wb') as new_file:
-            new_file.write(file_data)
+        try:
+            with open("./job" + str(self.job_id) + "/" + file_name, 'wb') as new_file:
+                new_file.write(file_data)
+        except OSError as e:
+            print("ERR:", e)
+            return
         print("INFO: Saved.")
 
     def get_file(self, file_name):
@@ -85,7 +89,13 @@ class HyperSlave():
             return False
 
         print("INFO: File: {} recieved. Saving now...".format(file_name))
-        file_data = decompress(file_request.content)
+        
+        try:
+            file_data = decompress(file_request.content)
+        except DecompressException as e:
+            print('Err:', e)
+            return False
+
         self.save_processed_data(file_name, file_data)
         return True
 
