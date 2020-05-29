@@ -1,8 +1,10 @@
 import sys
 import requests
+import shlex
 from common.networking import *
 from pathlib import Path
 from shutil import rmtree
+from subprocess import run
 from time import sleep
 from zlib import decompress, error as DecompressException
 
@@ -145,6 +147,18 @@ class HyperSlave():
             sleep(1)
         self.handle_job()
 
+
+	def run_shell_command(self, command):
+		"""
+		Execute a shell command outputing stdout/stderr to a result.txt file.
+		Returns the shell commands returncode.
+		"""
+		args = shlex.split(command)
+
+		with open('ApplicationResultLog.txt', "w") as f:
+			output = run(args, stdout=f, stderr=f, text=True)
+
+		return output.returncode
 
 if __name__ == "__main__":
     master_port = 5678
