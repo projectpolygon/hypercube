@@ -21,16 +21,14 @@
 #include <atlas/math/solvers.hpp>
 #include <atlas/utils/load_obj_file.hpp>
 
+namespace poly::structures {class World;}
+
 using namespace atlas;
 using Colour = math::Vector;
 
 
 void saveToBMP(std::string const& filename,
-               std::size_t start_width,
-               std::size_t end_width,
-               std::size_t start_height,
-               std::size_t end_height,
-               std::vector<Colour> const& image);
+               poly::structures::World& w);
 
 Colour random_colour_generate()
 {

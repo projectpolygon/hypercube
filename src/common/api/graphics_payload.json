@@ -4,7 +4,7 @@
 	"job_x": 1000,
 	"job_y": 1000,
 	"max_depth": 5,
-	"threads": 1,
+	"threads": 4,
 	"slab_size": 1000,
 	"task_number": 1,
 	"objects" : [
