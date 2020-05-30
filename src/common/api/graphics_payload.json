@@ -48,5 +48,5 @@
 			"colour": [1.0, 1.0, 1.0]
 		}
 	],
-	"output_file": "./slab.bmp"
+	"output_file": "./build/slab.bmp"
 }

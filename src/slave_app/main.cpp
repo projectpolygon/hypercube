@@ -27,7 +27,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 
 	std::cout << ShaderPath << std::endl;
 
-	saveToBMP("render.bmp", w);
+	std::string out_file = task["output_file"];
+	saveToBMP(ShaderPath + out_file, w);
 
   return 0;
 }

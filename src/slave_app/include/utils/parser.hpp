@@ -36,12 +36,12 @@ namespace poly::utils {
 		/*
 		 * Opens json file by its handle and returns a json object
 		 */
-		nlohmann::json open_json_file(const char* handle)
+		nlohmann::json open_json_file(const char* file_handle)
 		{
 			try {
 				std::ifstream fs;
 				std::string line, json_string;
-				fs.open(handle, std::fstream::in);
+				fs.open(file_handle, std::fstream::in);
 
 				while (fs >> line) {
 					json_string += line;
