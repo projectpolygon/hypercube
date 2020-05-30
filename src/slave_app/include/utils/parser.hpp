@@ -126,8 +126,8 @@ namespace poly::utils {
 
 			std::shared_ptr<poly::structures::ViewPlane> vp = std::make_shared<poly::structures::ViewPlane>();
 			try {
-				vp->vres = task["job_y"];
-				vp->hres = task["job_x"];
+				vp->vres = task["image_height"];
+				vp->hres = task["image_width"];
 				vp->max_depth = task["max_depth"];
 			} catch (const nlohmann::detail::type_error& e) {
 				std::wcerr << "Incorrect job parameters" << std::endl;
@@ -137,11 +137,11 @@ namespace poly::utils {
 			w.m_vp = vp;
 			w.m_tracer = std::make_shared<poly::structures::WhittedTracer>(&w);
 			w.m_scene = std::vector<std::shared_ptr<poly::object::Object>>();
-			w.m_start_width = task["task_startx"];
-			w.m_start_height = task["task_starty"];
-			w.m_end_width = task["task_endx"];
-			w.m_end_height = task["task_endy"];
-			w.m_slab_size = (w.m_end_width - w.m_start_width) / (unsigned int)task["threads"];
+			w.m_start_width = task["slab_startx"];
+			w.m_start_height = task["slab_starty"];
+			w.m_end_width = task["slab_endx"];
+			w.m_end_height = task["slab_endy"];
+			w.m_slab_size = (w.m_end_width - w.m_start_width) / (unsigned int)task["max_threads"];
 
 			try {
 				w.m_background = Colour{task["background"]};

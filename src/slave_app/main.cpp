@@ -17,13 +17,18 @@
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 
+	if (argc <= 1) {
+		std::wcerr << "Need file path" << std::endl;
+		exit(1);
+	}
+
 	srand((unsigned int) time(0));
 
 	nlohmann::json task = poly::utils::open_json_file(argv[1]);
 	poly::structures::World w = poly::utils::create_world(task);
 	poly::camera::PinholeCamera cam = poly::utils::parse_camera(task["camera"]);
 
-	cam.multithread_render_scene(w, task["threads"]);
+	cam.multithread_render_scene(w, task["max_threads"]);
 
 	std::cout << ShaderPath << std::endl;
 
