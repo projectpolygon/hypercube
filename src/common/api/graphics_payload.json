@@ -1,15 +1,11 @@
 
 {
-	"job_number": 1,
-	"job_x": 1000,
-	"job_y": 1000,
+	"image_height": 1000,
+	"image_width": 1000,
 	"max_depth": 5,
-	"threads": 1,
-	"slab_size": 1000,
-	"task_number": 1,
+	"max_threads": 1,
 	"objects" : [
 		{
-			"name": "sphere1",
 			"type": "sphere",
 			"centre": [0.0, 0.0, 150.0],
 			"radius": 60.0,
@@ -20,10 +16,10 @@
 			}
 		}
 	],
-	"task_startx": 0,
-	"task_starty": 0,
-	"task_endx": 1000,
-	"task_endy": 1000,
+	"slab_startx": 0,
+	"slab_starty": 0,
+	"slab_endx": 1000,
+	"slab_endy": 1000,
 	"camera": {
 		"type": "pinhole",
 		"distance": 400.0,
