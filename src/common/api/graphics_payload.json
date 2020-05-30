@@ -20,8 +20,8 @@
 			}
 		}
 	],
-	"task_startx": 0,
-	"task_starty": 0,
+	"task_startx": 500,
+	"task_starty": 500,
 	"task_endx": 1000,
 	"task_endy": 1000,
 	"camera": {

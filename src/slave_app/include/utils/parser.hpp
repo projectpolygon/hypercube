@@ -11,6 +11,7 @@ namespace poly::utils {
 		 */
 		math::Vector parse_vector(nlohmann::json vector_json, const std::size_t size)
 		{
+			// TODO: Make more generic for different sizes
 			math::Vector v{};
 			for (std::size_t i{0}; i < size; ++i) {
 				v[i] = vector_json[i];
