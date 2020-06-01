@@ -17,7 +17,7 @@ def connect(hostname, port):
     try:
         # try for a response within 0.05
         req = get(
-            "http://{}:{}/{}".format(hostname, port, endpoints.DISCOVERY), timeout=0.05)
+            "http://{}:{}/{}".format(hostname, port, endpoints.DISCOVERY), timeout=0.075)
         # 200 okay returned, master discovery succeeded
         if req.status_code == 200:
             # TODO: discovery may return json on master information
@@ -155,6 +155,9 @@ class HyperSlave():
         self.HOST = None
         while self.HOST is None:
             self.HOST = attempt_master_connection(self.PORT)
+            if self.HOST is not None:
+                break
+            print('\nRetrying...',)
             sleep(1)
         self.handle_job()
 
