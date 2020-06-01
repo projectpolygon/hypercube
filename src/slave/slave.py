@@ -4,7 +4,7 @@ import shlex
 from common.networking import *
 from pathlib import Path
 from shutil import rmtree
-from subprocess import run
+from subprocess import Popen, run
 from time import sleep
 from zlib import decompress, error as DecompressException
 
@@ -149,7 +149,7 @@ class HyperSlave():
             sleep(1)
         self.handle_job()
 
-    def run_shell_command(self, command):
+	def run_wait(self, command):
         """
         Execute a shell command outputing stdout/stderr to a result.txt file.
         Returns the shell commands returncode.
@@ -161,6 +161,15 @@ class HyperSlave():
 
         return output.returncode
 
+
+	def run_subprocess(self, command, logfile):
+		"""
+		Execute a shell command as a subprocess outputing stdout/stderr to the inputed log file.
+		Returns the subprocess
+		"""
+		args = shlex.split(command)
+		process = Popen(args, stdout=logfile, stderr=logfile, text=True)
+		return process
 
 if __name__ == "__main__":
     master_port = 5678
