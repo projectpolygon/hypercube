@@ -32,14 +32,17 @@ class HyperSlave():
         """
         session: Session = Session()
         try:
-            # try for a response within 0.05
+            # try for a response within 0.075s
             resp = session.get(
                 f'http://{hostname}:{port}/{endpoints.DISCOVERY}', timeout=0.075)
             # 200 okay returned, master discovery succeeded
             if resp.status_code == 200:
-                master_info = MasterInfo(resp.json())
-                if master_info is not None:
-                    self.master_info: MasterInfo = master_info
+                try:
+                    self.master_info = MasterInfo(resp.json())
+                
+                except ValueError:
+                    print('INFO: Master provided no info')
+
                 return session
 
         except ConnectionError:
@@ -53,6 +56,7 @@ class HyperSlave():
             else:
                 print('ERR:', e)
                 exit(1)
+                
         return None
 
     def attempt_master_connection(self, master_port):
@@ -159,26 +163,27 @@ class HyperSlave():
             # TASK_DATA
 
             # Send Heartbeat
-            self.send_heatbeat()
+            self.send_heartbeat()
             sleep(1)
             continue
 
-    def send_heatbeat(self):
+    def send_heartbeat(self):
         try:
             resp = self.session.get(
                 url=f'http://{self.HOST}:{self.PORT}/{endpoints.HEARTBEAT}', timeout=1)
 
-            if resp.status_code != 200:
+            if resp.status_code == 200:
+                return True
+            else:
                 print("ERR: Connection is not healthy")
-                return False
 
         except ConnectionError:
             print("ERR: Master cannot be reached.")
-            return False
 
         except Exception as e:
             print("ERR:", e)
-            return False
+        
+        return False
 
     def start(self):
         """
