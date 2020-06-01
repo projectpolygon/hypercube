@@ -43,6 +43,10 @@ src/instance/
 /docs/_site/
 
 # IDE files
-/.idea
+**.idea
+**build
+
+# CMake generated files
+*paths.hpp
 
 __pycache__/
