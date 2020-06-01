@@ -2,9 +2,9 @@ import os
 from flask import Flask, request, Response, jsonify, send_file
 from io import BytesIO
 import json
-from common.networking import *
-from common import *
 from zlib import compress, error as CompressException
+from common.networking import get_ip_addr
+import common.api.endpoints as endpoints
 
 
 class HyperMaster():
@@ -19,6 +19,79 @@ class HyperMaster():
     def start_server(self):
         app = create_app(self)
         app.run(host=self.HOST, port=self.PORT, debug=True)
+
+    def create_routes(self, app, job_file_name):
+
+        # JOB_GET
+        @app.route("/{}".format(endpoints.JOB), methods=["GET", "POST"])
+        def get_job():
+            with open(job_file_name, "r") as job_file:
+                # read and parse the JSON
+                job_json = json.loads(job_file.read())
+
+                if request.is_json:
+                    content = request.json()
+
+                    # GLOBAL list for tracking slaves
+                    # still need to work out how we want
+                    # to use this
+                    self.connections.append(content)
+                return jsonify(job_json)
+
+        @app.route("/{}/<int:job_id>/<string:file_name>".format(endpoints.FILE), methods=["GET"])
+        def get_file(job_id: int, file_name: str):
+            """
+            Endpoint to handle file request from the slave
+            """
+            try:
+                with open(file_name, "rb") as file:
+                    print("INFO: sending {} as part of job {}".format(
+                        file_name, job_id))
+                    file_data = file.read()
+                    compressed_data = compress(file_data)
+                    return send_file(
+                        BytesIO(compressed_data),
+                        mimetype='application/octet-stream',
+                        as_attachment=True,
+                        attachment_filename=file_name
+                    )
+
+            except CompressException as e:
+                print('Err:', e)
+                return Response(status=500)
+
+            except FileNotFoundError as e:
+                print('Err:', e)
+                return Response(status=404)
+
+            except Exception as e:
+                print('Err:', e)
+                return Response(status=500)
+
+        # TASK_GET
+        @app.route("/{}/<int:job_id>".format(endpoints.TASK), methods=["GET"])
+        def get_task(job_id: int):
+            content = request.json
+            # read the message for information
+            # fetch task from the queue
+            # return this task "formatted" back to slave
+
+        # TASK_DATA
+        @app.route("/{}/<int:job_id>/<int:task_id>".format(endpoints.TASK_DATA), methods=["POST"])
+        def task_data(job_id: int, task_id: int):
+            message_data = request.json
+            # read rest of data as JSON and pass payload to application
+            # return 200 ok
+
+        @app.route("/{}".format(endpoints.DISCOVERY))
+        def discovery():
+            json_data = {"ip": get_ip_addr()}
+            resp = Response(json_data, status=200)
+            return resp
+
+        @app.route("/{}".format(endpoints.HEARTBEAT))
+        def heartbeat():
+            return Response(status=200)
 
     # functions that can be overridden to do user programmable tasks
     # TODO: what do these take as arguments, and what do they return?
@@ -90,79 +163,9 @@ def create_app(hyper_master: HyperMaster):
         pass
 
     # create the endpoints for job handling
-    create_routes(hyper_master, app, job_file_name)
+    hyper_master.create_routes(app, job_file_name)
 
     return app
-
-# TODO these functions might be better suited as member functions
-def create_routes(hyper_master, app, job_file_name):
-
-    # JOB_GET
-    @app.route("/JOB_GET", methods=["GET", "POST"])
-    def get_job():
-        with open(job_file_name, "r") as job_file:
-            # read and parse the JSON
-            job_json = json.loads(job_file.read())
-
-            if request.is_json:
-                content = request.json()
-
-                # GLOBAL list for tracking slaves
-                # still need to work out how we want
-                # to use this
-                hyper_master.connections.append(content)
-            return jsonify(job_json)
-
-    @app.route("/FILE_GET/<int:job_id>/<string:file_name>", methods=["GET"])
-    def get_file(job_id: int, file_name: str):
-        """
-        Endpoint to handle file request from the slave
-        """
-        try:
-            with open(file_name, "rb") as file:
-                print("INFO: sending {} as part of job {}".format(
-                    file_name, job_id))
-                file_data = file.read()
-                compressed_data = compress(file_data)
-                return send_file(
-                    BytesIO(compressed_data),
-                    mimetype='application/octet-stream',
-                    as_attachment=True,
-                    attachment_filename=file_name
-                )
-
-        except CompressException as e:
-            print('Err:', e)
-            return Response(status=500)
-
-        except FileNotFoundError as e:
-            print('Err:', e)
-            return Response(status=404)
-
-        except Exception as e:
-            print('Err:', e)
-            return Response(status=500)
-
-    # TASK_GET
-    @app.route("/TASK_GET/<int:job_id>", methods=["GET"])
-    def get_task(job_id: int):
-        content = request.json
-        # read the message for information
-        # fetch task from the queue
-        # return this task "formatted" back to slave
-
-    # TASK_DATA
-    @app.route("/TASK_DATA/<int:job_id>/<int:task_id>", methods=["POST"])
-    def task_data(job_id: int, task_id: int):
-        message_data = request.json
-        # read rest of data as JSON and pass payload to application
-        # return 200 ok
-
-    @app.route("/HEARTBEAT")
-    def heartbeat():
-        json_message = {"ip": get_ip_addr(), "status": 200}
-        response_message = Response(json_message, status=200)
-        return response_message
 
 
 # TODO: normally, this would be imported

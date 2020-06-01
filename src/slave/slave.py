@@ -1,12 +1,13 @@
 import sys
 import requests
 import shlex
-from common.networking import *
 from pathlib import Path
 from shutil import rmtree
 from subprocess import run
 from time import sleep
 from zlib import decompress, error as DecompressException
+from common.networking import get_ip_addr
+import common.api.endpoints as endpoints 
 
 
 def connect(hostname, port):
@@ -16,14 +17,18 @@ def connect(hostname, port):
     try:
         # try for a response within 0.05
         req = requests.get(
-            "http://{}:{}/HEARTBEAT".format(hostname, port), timeout=0.05)
-        # 200 okay returned, heartbeat at this address succeeded
+            "http://{}:{}/{}".format(hostname, port, endpoints.DISCOVERY), timeout=0.05)
+        # 200 okay returned, master discovery succeeded
         if req.status_code == 200:
+            # TODO: discovery may return json on master information
             return True
     except Exception as e:
         # allows breaking out of the loop
         if e == KeyboardInterrupt:
             print('Keyboard Interrupt detected. Exiting...')
+            exit(0)
+        else:
+            print('ERR:', e)
             exit(1)
     return False
 
@@ -86,8 +91,8 @@ class HyperSlave():
         Returns a success boolean
         """
         print("INFO: requesting file: {}".format(file_name))
-        file_request = requests.get("http://{}:{}/FILE_GET/{}/{}"
-                                    .format(self.HOST, self.PORT, self.job_id, file_name))
+        file_request = requests.get("http://{}:{}/{}/{}/{}"
+                                    .format(self.HOST, self.PORT, endpoints.FILE, self.job_id, file_name))
         if not file_request:
             print("ERR: file was not returned")
             return False
@@ -110,7 +115,7 @@ class HyperSlave():
         print("INFO: connection made")
         # JOB_GET
         job_request = requests.get(
-            "http://{}:{}/JOB_GET".format(self.HOST, self.PORT), timeout=5)
+            "http://{}:{}/{}}".format(self.HOST, self.PORT, endpoints.JOB), timeout=5)
 
         # don't continue we have no job
         if not job_request:
