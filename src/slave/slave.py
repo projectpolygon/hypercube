@@ -39,11 +39,11 @@ class HyperSlave():
             if resp.status_code == 200:
                 try:
                     self.master_info = MasterInfo(resp.json())
+                    return session
                 
                 except ValueError:
                     print('INFO: Master provided no info')
 
-                return session
 
         except ConnectionError:
             return None
