@@ -4,6 +4,7 @@ from io import BytesIO
 import json
 from zlib import compress, error as CompressException
 from common.networking import get_ip_addr
+from common.api.types import *
 import common.api.endpoints as endpoints
 
 
@@ -82,9 +83,10 @@ class HyperMaster():
 
         @app.route("/{}".format(endpoints.DISCOVERY))
         def discovery():
-            json_message = {"ip": get_ip_addr(), "status": 200}
-            response_message = Response(json_message, status=200)
-            return response_message
+            master_info: MasterInfo = {
+                "ip": get_ip_addr()
+            }
+            return jsonify(master_info)
 
         @app.route("/{}".format(endpoints.HEARTBEAT))
         def heartbeat():

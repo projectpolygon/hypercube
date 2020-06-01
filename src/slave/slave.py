@@ -7,53 +7,8 @@ from subprocess import run
 from time import sleep
 from zlib import decompress, error as DecompressException
 from common.networking import get_ip_addr
+from common.api.types import *
 import common.api.endpoints as endpoints
-
-
-def connect(hostname, port):
-    """
-    Connect to a hostname on given post
-    """
-    try:
-        # try for a response within 0.05
-        req = get(
-            "http://{}:{}/{}".format(hostname, port, endpoints.DISCOVERY), timeout=0.075)
-        # 200 okay returned, master discovery succeeded
-        if req.status_code == 200:
-            # TODO: discovery may return json on master information
-            return True
-    
-    except ConnectionError:
-        return False
-
-    except Exception as e:
-        # allows breaking out of the loop
-        if e == KeyboardInterrupt:
-            print('Keyboard Interrupt detected. Exiting...')
-            exit(0)
-        else:
-            print('ERR:', e)
-            exit(1)
-    return False
-
-
-def attempt_master_connection(master_port):
-    """
-    Attempt to find and connect to the master node
-    """
-    network_id = get_ip_addr().rpartition('.')[0]
-    print('INFO: attempting master connection')
-    for i in range(0, 255):
-        hostname = network_id + "." + str(i)
-        connected = connect(hostname, master_port)
-        if connected:
-            print("\rINFO: master found at: ",
-                  hostname + ':' + str(master_port))
-            return hostname
-        else:
-            print("\rINFO: master not at: ", hostname +
-                  ':' + str(master_port), end='')
-    return None
 
 
 class HyperSlave():
@@ -66,6 +21,54 @@ class HyperSlave():
         self.HOST = ""
         self.PORT = PORT
         self.job_id = 0
+        self.master_info: MasterInfo = None
+
+    def connect(self, hostname, port):
+        """
+        Connect to a hostname on given post
+        """
+        try:
+            # try for a response within 0.05
+            req = get(
+                "http://{}:{}/{}".format(hostname, port, endpoints.DISCOVERY), timeout=0.075)
+            # 200 okay returned, master discovery succeeded
+            if req.status_code == 200:
+                master_info = MasterInfo(req.json())
+                if master_info is not None:
+                    self.master_info: MasterInfo = master_info
+                return True
+
+        except ConnectionError:
+            return False
+
+        except Exception as e:
+            # allows breaking out of the loop
+            if e == KeyboardInterrupt:
+                print('Keyboard Interrupt detected. Exiting...')
+                exit(0)
+            else:
+                print('ERR:', e)
+                exit(1)
+        return False
+
+
+    def attempt_master_connection(self, master_port):
+        """
+        Attempt to find and connect to the master node
+        """
+        network_id = get_ip_addr().rpartition('.')[0]
+        print('INFO: attempting master connection')
+        for i in range(0, 255):
+            hostname = network_id + "." + str(i)
+            connected = self.connect(hostname, master_port)
+            if connected:
+                print("\rINFO: master found at: ",
+                    hostname + ':' + str(master_port))
+                return hostname
+            else:
+                print("\rINFO: master not at: ", hostname +
+                    ':' + str(master_port), end='')
+        return None
 
     def create_job_dir(self):
         """
@@ -96,7 +99,7 @@ class HyperSlave():
         """
         print("INFO: requesting file: {}".format(file_name))
         file_request = get("http://{}:{}/{}/{}/{}"
-                                    .format(self.HOST, self.PORT, endpoints.FILE, self.job_id, file_name))
+                           .format(self.HOST, self.PORT, endpoints.FILE, self.job_id, file_name))
         if not file_request:
             print("ERR: file was not returned")
             return False
@@ -154,7 +157,7 @@ class HyperSlave():
         """
         self.HOST = None
         while self.HOST is None:
-            self.HOST = attempt_master_connection(self.PORT)
+            self.HOST = self.attempt_master_connection(self.PORT)
             if self.HOST is not None:
                 break
             print('\nRetrying...',)
