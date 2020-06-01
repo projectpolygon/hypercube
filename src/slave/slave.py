@@ -1,50 +1,15 @@
 import sys
-import requests
+from requests import Session, cookies, ConnectionError
 import shlex
-from common.networking import *
 from pathlib import Path
 from shutil import rmtree
 from subprocess import run
 from time import sleep
 from zlib import decompress, error as DecompressException
-
-
-def connect(hostname, port):
-    """
-    Connect to a hostname on given post
-    """
-    try:
-        # try for a response within 0.05
-        req = requests.get(
-            "http://{}:{}/HEARTBEAT".format(hostname, port), timeout=0.05)
-        # 200 okay returned, heartbeat at this address succeeded
-        if req.status_code == 200:
-            return True
-    except Exception as e:
-        # allows breaking out of the loop
-        if e == KeyboardInterrupt:
-            print('Keyboard Interrupt detected. Exiting...')
-            exit(1)
-    return False
-
-
-def attempt_master_connection(master_port):
-    """
-    Attempt to find and connect to the master node
-    """
-    network_id = get_ip_addr().rpartition('.')[0]
-    print('INFO: attempting master connection')
-    for i in range(0, 255):
-        hostname = network_id + "." + str(i)
-        connected = connect(hostname, master_port)
-        if connected:
-            print("\rINFO: master found at: ",
-                  hostname + ':' + str(master_port))
-            return hostname
-        else:
-            print("\rINFO: master not at: ", hostname +
-                  ':' + str(master_port), end='')
-    return None
+from random import random
+from common.networking import get_ip_addr
+from common.api.types import MasterInfo
+import common.api.endpoints as endpoints
 
 
 class HyperSlave():
@@ -54,9 +19,71 @@ class HyperSlave():
     """
 
     def __init__(self, PORT=5678):
-        self.HOST = ""
+        self.session: Session = None
+        self.IP_ADDR = None
+        self.HOST = None
         self.PORT = PORT
-        self.job_id = 0
+        self.job_id = None
+        self.master_info: MasterInfo = None
+
+    def connect(self, hostname, port):
+        """
+        Connect to a hostname on given post
+        """
+        session: Session = Session()
+        try:
+            # try for a response within 0.075s
+            resp = session.get(
+                f'http://{hostname}:{port}/{endpoints.DISCOVERY}', timeout=0.075)
+            # 200 okay returned, master discovery succeeded
+            if resp.status_code == 200:
+                try:
+                    self.master_info = MasterInfo(resp.json())
+                    return session
+                
+                except ValueError:
+                    print('INFO: Master provided no info')
+
+
+        except ConnectionError:
+            return None
+
+        except Exception as e:
+            # allows breaking out of the loop
+            if e == KeyboardInterrupt:
+                print('Keyboard Interrupt detected. Exiting...')
+                exit(0)
+            else:
+                print('ERR:', e)
+                exit(1)
+                
+        return None
+
+    def attempt_master_connection(self, master_port):
+        """
+        Attempt to find and connect to the master node
+        """
+        self.IP_ADDR = get_ip_addr()
+        network_id = self.IP_ADDR.rpartition('.')[0]
+        print('INFO: attempting master connection')
+        for i in range(0, 255):
+            hostname = network_id + "." + str(i)
+            session = self.connect(hostname, master_port)
+            if session is not None:
+                self.set_session(session)
+                print("\rINFO: master found at: ",
+                      hostname + ':' + str(master_port))
+                return hostname
+            else:
+                print("\rINFO: master not at: ", hostname +
+                      ':' + str(master_port), end='')
+        return None
+
+    def set_session(self, session: Session):
+        session_id = self.IP_ADDR + '-' + str(random() * random() * 123456789)
+        cookie = cookies.create_cookie('id', session_id)
+        session.cookies.set_cookie(cookie)
+        self.session = session
 
     def create_job_dir(self):
         """
@@ -86,16 +113,15 @@ class HyperSlave():
         Returns a success boolean
         """
         print("INFO: requesting file: {}".format(file_name))
-        file_request = requests.get("http://{}:{}/FILE_GET/{}/{}"
-                                    .format(self.HOST, self.PORT, self.job_id, file_name))
-        if not file_request:
+        resp = self.session.get(f'http://{self.HOST}:{self.PORT}/{endpoints.FILE}/{self.job_id}/{file_name}')
+        if not resp:
             print("ERR: file was not returned")
             return False
 
         print("INFO: File: {} recieved. Saving now...".format(file_name))
 
         try:
-            file_data = decompress(file_request.content)
+            file_data = decompress(resp.content)
         except DecompressException as e:
             print('Err:', e)
             return False
@@ -103,22 +129,21 @@ class HyperSlave():
         self.save_processed_data(file_name, file_data)
         return True
 
-    def handle_job(self):
+    def req_job(self):
         """
-        Connection established, handle the job
+        Connection established, request a job
         """
-        print("INFO: connection made")
-        # JOB_GET
-        job_request = requests.get(
-            "http://{}:{}/JOB_GET".format(self.HOST, self.PORT), timeout=5)
 
-        # don't continue we have no job
-        if not job_request:
+        resp = self.session.get(
+            f'http://{self.HOST}:{self.PORT}/{endpoints.JOB}', timeout=5)
+
+        # return if there is no job
+        if not resp:
             return
 
         # parse as JSON
         try:
-            job_json = job_request.json()
+            job_json = resp.json()
             self.job_id: int = job_json.get("job_id")
             job_file_names: list = job_json.get("file_names")
         except:
@@ -136,8 +161,29 @@ class HyperSlave():
             # TODO handle the rest of the job
             # TASK_GET
             # TASK_DATA
+
+            # Send Heartbeat
+            self.send_heartbeat()
             sleep(1)
             continue
+
+    def send_heartbeat(self):
+        try:
+            resp = self.session.get(
+                url=f'http://{self.HOST}:{self.PORT}/{endpoints.HEARTBEAT}', timeout=1)
+
+            if resp.status_code == 200:
+                return True
+            else:
+                print("ERR: Connection is not healthy")
+
+        except ConnectionError:
+            print("ERR: Master cannot be reached.")
+
+        except Exception as e:
+            print("ERR:", e)
+        
+        return False
 
     def start(self):
         """
@@ -145,9 +191,13 @@ class HyperSlave():
         """
         self.HOST = None
         while self.HOST is None:
-            self.HOST = attempt_master_connection(self.PORT)
+            self.HOST = self.attempt_master_connection(self.PORT)
+            if self.HOST is not None:
+                break
+            print('\nINFO: Retrying...',)
             sleep(1)
-        self.handle_job()
+        print("INFO: Connection Successful")
+        self.req_job()
 
     def run_shell_command(self, command):
         """
