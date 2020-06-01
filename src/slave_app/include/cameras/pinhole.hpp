@@ -68,7 +68,7 @@ namespace poly::camera {
               int h_center = wheight / 2;
 
               std::shared_ptr<poly::structures::scene_slab> new_ti = std::make_shared<poly::structures::scene_slab>(
-                world_ptr,//std::make_shared<World>(world),
+                world_ptr,
                 storage_mutex,
                 storage,
                 j - w_center,
@@ -131,11 +131,10 @@ namespace poly::camera {
 
           for (int i = (wheight / 2) - 1; i >= -(wheight / 2); i--){
             for (int j = -(wwidth / 2); j < (wwidth / 2); j++){
-              // std::vector<std::vector<double>> subsamples =
-              //     world.m_sampler->subsample(4);
+
               Colour average = Colour(0.0f, 0.0f, 0.0f);
               unsigned int count = 0;
-              //for(std::vector<double> sample : subsamples){
+
               int max_num_samples = world.m_sampler->num_samples_get();
 
               // For anti-aliasing

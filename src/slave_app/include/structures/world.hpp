@@ -24,17 +24,13 @@ namespace poly::structures {
         std::vector<Colour> m_image; // Output as 1D array
 
         std::shared_ptr<ViewPlane> m_vp;
-        //std::shared_ptr<AcceleratorStruct> m_acceleratorStructure;
+
         std::shared_ptr<Tracer> m_tracer;
 
         unsigned int m_slab_size{};
 
-        World() = default;/*:m_acceleratorStructure{ nullptr } */
+        World() = default;
         ~World() = default;
 
-        //void accelerator_set(std::shared_ptr<AcceleratorStruct> acc_struct)
-        //{
-        //	m_acceleratorStructure = acc_struct;
-        //}
     };
 }

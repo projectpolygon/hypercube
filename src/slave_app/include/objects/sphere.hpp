@@ -59,7 +59,7 @@ namespace poly::object {
             return true;
           }
           return false;
-          //return this->closest_intersect_get(R,t);
+
         }
 
         bool closest_intersect_get(const math::Ray<math::Vector>& R,
@@ -100,4 +100,3 @@ namespace poly::object {
         double r; // Radius of the sphere
     };
 }
-
