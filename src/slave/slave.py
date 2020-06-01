@@ -1,5 +1,5 @@
 import sys
-import requests
+from requests import get, post, ConnectionError
 import shlex
 from pathlib import Path
 from shutil import rmtree
@@ -7,7 +7,7 @@ from subprocess import run
 from time import sleep
 from zlib import decompress, error as DecompressException
 from common.networking import get_ip_addr
-import common.api.endpoints as endpoints 
+import common.api.endpoints as endpoints
 
 
 def connect(hostname, port):
@@ -16,12 +16,16 @@ def connect(hostname, port):
     """
     try:
         # try for a response within 0.05
-        req = requests.get(
+        req = get(
             "http://{}:{}/{}".format(hostname, port, endpoints.DISCOVERY), timeout=0.05)
         # 200 okay returned, master discovery succeeded
         if req.status_code == 200:
             # TODO: discovery may return json on master information
             return True
+    
+    except ConnectionError:
+        return False
+
     except Exception as e:
         # allows breaking out of the loop
         if e == KeyboardInterrupt:
@@ -91,7 +95,7 @@ class HyperSlave():
         Returns a success boolean
         """
         print("INFO: requesting file: {}".format(file_name))
-        file_request = requests.get("http://{}:{}/{}/{}/{}"
+        file_request = get("http://{}:{}/{}/{}/{}"
                                     .format(self.HOST, self.PORT, endpoints.FILE, self.job_id, file_name))
         if not file_request:
             print("ERR: file was not returned")
@@ -113,9 +117,9 @@ class HyperSlave():
         Connection established, handle the job
         """
         print("INFO: connection made")
-        # JOB_GET
-        job_request = requests.get(
-            "http://{}:{}/{}}".format(self.HOST, self.PORT, endpoints.JOB), timeout=5)
+
+        job_request = get(
+            "http://{}:{}/{}".format(self.HOST, self.PORT, endpoints.JOB), timeout=5)
 
         # don't continue we have no job
         if not job_request:
