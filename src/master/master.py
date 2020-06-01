@@ -15,7 +15,11 @@ class HyperMaster():
         self.PORT = PORT
         self.test_config = None
         self.task_queue = []
-        self.connections = []
+        # unique set of connections.
+        # TODO: Maybe a subprocess or some other method to
+        #       check if connection still alive,
+        #       Heartbeat from slave would reset connections
+        self.connections = set()
 
     def start_server(self):
         app = create_app(self)
@@ -23,19 +27,16 @@ class HyperMaster():
 
     def create_routes(self, app, job_file_name):
 
-        @app.route("/{}".format(endpoints.JOB), methods=["GET", "POST"])
+        @app.route("/{}".format(endpoints.JOB))
         def get_job():
+            print('INFO: Job request from', request.environ.get(
+                'REMOTE_ADDR', 'default value'))
+            print('INFO: Saving connection.')
+            self.connections.add(request.cookies.get('id'))
+
             with open(job_file_name, "r") as job_file:
                 # read and parse the JSON
                 job_json = json.loads(job_file.read())
-
-                if request.is_json:
-                    content = request.json()
-
-                    # GLOBAL list for tracking slaves
-                    # still need to work out how we want
-                    # to use this
-                    self.connections.append(content)
                 return jsonify(job_json)
 
         @app.route("/{}/<int:job_id>/<string:file_name>".format(endpoints.FILE), methods=["GET"])
@@ -83,6 +84,10 @@ class HyperMaster():
 
         @app.route("/{}".format(endpoints.DISCOVERY))
         def discovery():
+            """
+            Endpoint used for initial master discovery for the slave.
+            Returns master information in json format to slave
+            """
             master_info: MasterInfo = {
                 "ip": get_ip_addr()
             }
@@ -90,6 +95,11 @@ class HyperMaster():
 
         @app.route("/{}".format(endpoints.HEARTBEAT))
         def heartbeat():
+            """
+            Heartbeat recieved from a slave, indicating it is still connected
+            """
+            # TODO: Update existing connection in set. Resets Timer
+            self.connections.add(request.cookies.get('id'))
             return Response(status=200)
 
     # functions that can be overridden to do user programmable tasks
