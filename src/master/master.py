@@ -4,7 +4,7 @@ from io import BytesIO
 import json
 from zlib import compress, error as CompressException
 from common.networking import get_ip_addr
-from common.api.types import *
+from common.api.types import MasterInfo
 import common.api.endpoints as endpoints
 
 
@@ -27,19 +27,20 @@ class HyperMaster():
 
     def create_routes(self, app, job_file_name):
 
-        @app.route("/{}".format(endpoints.JOB))
+        @app.route(f'/{endpoints.JOB}')
         def get_job():
             print('INFO: Job request from', request.environ.get(
                 'REMOTE_ADDR', 'default value'))
-            print('INFO: Saving connection.')
-            self.connections.add(request.cookies.get('id'))
+            conn_id = request.cookies.get('id')
+            print('INFO: Saving connection:', conn_id)
+            self.connections.add(conn_id)
 
             with open(job_file_name, "r") as job_file:
                 # read and parse the JSON
                 job_json = json.loads(job_file.read())
                 return jsonify(job_json)
 
-        @app.route("/{}/<int:job_id>/<string:file_name>".format(endpoints.FILE), methods=["GET"])
+        @app.route(f'/{endpoints.FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
         def get_file(job_id: int, file_name: str):
             """
             Endpoint to handle file request from the slave
@@ -69,20 +70,20 @@ class HyperMaster():
                 print('Err:', e)
                 return Response(status=500)
 
-        @app.route("/{}/<int:job_id>".format(endpoints.TASK), methods=["GET"])
+        @app.route(f'/{endpoints.TASK}/<int:job_id>', methods=["GET"])
         def get_task(job_id: int):
             content = request.json
             # read the message for information
             # fetch task from the queue
             # return this task "formatted" back to slave
 
-        @app.route("/{}/<int:job_id>/<int:task_id>".format(endpoints.TASK_DATA), methods=["POST"])
+        @app.route(f'/{endpoints.TASK_DATA}/<int:job_id>/<int:task_id>', methods=["POST"])
         def task_data(job_id: int, task_id: int):
             message_data = request.json
             # read rest of data as JSON and pass payload to application
             # return 200 ok
 
-        @app.route("/{}".format(endpoints.DISCOVERY))
+        @app.route(f'/{endpoints.DISCOVERY}')
         def discovery():
             """
             Endpoint used for initial master discovery for the slave.
@@ -93,13 +94,15 @@ class HyperMaster():
             }
             return jsonify(master_info)
 
-        @app.route("/{}".format(endpoints.HEARTBEAT))
+        @app.route(f'/{endpoints.HEARTBEAT}')
         def heartbeat():
             """
             Heartbeat recieved from a slave, indicating it is still connected
             """
             # TODO: Update existing connection in set. Resets Timer
-            self.connections.add(request.cookies.get('id'))
+            conn_id = request.cookies.get('id')
+            print('INFO: Updating connection:', conn_id)
+            self.connections.add(conn_id)
             return Response(status=200)
 
     # functions that can be overridden to do user programmable tasks

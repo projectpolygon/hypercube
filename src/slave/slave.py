@@ -8,7 +8,7 @@ from time import sleep
 from zlib import decompress, error as DecompressException
 from random import random
 from common.networking import get_ip_addr
-from common.api.types import *
+from common.api.types import MasterInfo
 import common.api.endpoints as endpoints
 
 
@@ -34,7 +34,7 @@ class HyperSlave():
         try:
             # try for a response within 0.05
             resp = session.get(
-                "http://{}:{}/{}".format(hostname, port, endpoints.DISCOVERY), timeout=0.075)
+                f'http://{hostname}:{port}/{endpoints.DISCOVERY}', timeout=0.075)
             # 200 okay returned, master discovery succeeded
             if resp.status_code == 200:
                 master_info = MasterInfo(resp.json())
@@ -109,8 +109,7 @@ class HyperSlave():
         Returns a success boolean
         """
         print("INFO: requesting file: {}".format(file_name))
-        resp = self.session.get("http://{}:{}/{}/{}/{}"
-                                .format(self.HOST, self.PORT, endpoints.FILE, self.job_id, file_name))
+        resp = self.session.get(f'http://{self.HOST}:{self.PORT}/{endpoints.FILE}/{self.job_id}/{file_name}')
         if not resp:
             print("ERR: file was not returned")
             return False
@@ -132,7 +131,7 @@ class HyperSlave():
         """
 
         resp = self.session.get(
-            "http://{}:{}/{}".format(self.HOST, self.PORT, endpoints.JOB), timeout=5)
+            f'http://{self.HOST}:{self.PORT}/{endpoints.JOB}', timeout=5)
 
         # return if there is no job
         if not resp:
@@ -167,7 +166,7 @@ class HyperSlave():
     def send_heatbeat(self):
         try:
             resp = self.session.get(
-                url="http://{}:{}/{}".format(self.HOST, self.PORT, endpoints.HEARTBEAT), timeout=1)
+                url=f'http://{self.HOST}:{self.PORT}/{endpoints.HEARTBEAT}', timeout=1)
 
             if resp.status_code != 200:
                 print("ERR: Connection is not healthy")
