@@ -1,8 +1,8 @@
-name: Build Pipeline
+name: PR Pipeline
 
-# Runs on push to master
+# Runs on PRs to master
 on:
-  push:
+  pull_request:
     branches:
       - master
 
@@ -22,10 +22,10 @@ jobs:
       - name: Run Slave unit tests
         run: docker build -f "slave.Dockerfile" -t slave/unit_tests --target test-env .
 
-  build_and_deploy:
+  build:
     # if the commit message doesnt contain [skip-ci] then run this job
     if: "!contains(github.event.head_commit.message, '[skip-ci]')"
-    name: Build Docker images and deploys them to DockerHub
+    name: Build Docker images
     runs-on: ubuntu-latest
 
     steps:
@@ -34,20 +34,5 @@ jobs:
       - name: Build Master image
         run: docker build --rm -f "master.Dockerfile" -t hypercube:master "."
 
-      - name: Tag Master image for push
-        run: docker tag hypercube:master projectpolygon/hypercube:master
-
       - name: Build Slave image
         run: docker build --rm -f "slave.Dockerfile" -t hypercube:slave "."
-
-      - name: Tag Slave image for push
-        run: docker tag hypercube:slave projectpolygon/hypercube:slave
-
-      - name: Login to DockerHub
-        run: docker login --username projectpolygon --password ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      - name: Push Master image to DockerHub
-        run: docker push projectpolygon/hypercube:master
-
-      - name: Push Slave image to DockerHub
-        run: docker push projectpolygon/hypercube:slave
