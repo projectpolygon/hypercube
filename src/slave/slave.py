@@ -1,16 +1,18 @@
-import sys
-from requests import Session, cookies, ConnectionError
-import shlex
+# External imports
 from pathlib import Path
+from random import random
+from requests import ConnectionError, Session, cookies
+from shlex import split
 from shutil import rmtree
 from subprocess import run
+from sys import argv
 from time import sleep
 from zlib import decompress, error as DecompressException
-from random import random
-from common.networking import get_ip_addr
-from common.api.types import MasterInfo
-import common.api.endpoints as endpoints
 
+# Internal imports
+from common.api.endpoints import DISCOVERY, FILE, HEARTBEAT, JOB
+from common.api.types import MasterInfo
+from common.networking import get_ip_addr
 
 class HyperSlave():
     """
@@ -34,7 +36,7 @@ class HyperSlave():
         try:
             # try for a response within 0.075s
             resp = session.get(
-                f'http://{hostname}:{port}/{endpoints.DISCOVERY}', timeout=0.075)
+                f'http://{hostname}:{port}/{DISCOVERY}', timeout=0.075)
             # 200 okay returned, master discovery succeeded
             if resp.status_code == 200:
                 try:
@@ -113,7 +115,7 @@ class HyperSlave():
         Returns a success boolean
         """
         print("INFO: requesting file: {}".format(file_name))
-        resp = self.session.get(f'http://{self.HOST}:{self.PORT}/{endpoints.FILE}/{self.job_id}/{file_name}')
+        resp = self.session.get(f'http://{self.HOST}:{self.PORT}/{FILE}/{self.job_id}/{file_name}')
         if not resp:
             print("ERR: file was not returned")
             return False
@@ -135,7 +137,7 @@ class HyperSlave():
         """
 
         resp = self.session.get(
-            f'http://{self.HOST}:{self.PORT}/{endpoints.JOB}', timeout=5)
+            f'http://{self.HOST}:{self.PORT}/{JOB}', timeout=5)
 
         # return if there is no job
         if not resp:
@@ -170,7 +172,7 @@ class HyperSlave():
     def send_heartbeat(self):
         try:
             resp = self.session.get(
-                url=f'http://{self.HOST}:{self.PORT}/{endpoints.HEARTBEAT}', timeout=1)
+                url=f'http://{self.HOST}:{self.PORT}/{HEARTBEAT}', timeout=1)
 
             if resp.status_code == 200:
                 return True
@@ -204,7 +206,7 @@ class HyperSlave():
         Execute a shell command outputing stdout/stderr to a result.txt file.
         Returns the shell commands returncode.
         """
-        args = shlex.split(command)
+        args = split(command)
 
         with open('ApplicationResultLog.txt', "w") as f:
             output = run(args, stdout=f, stderr=f, text=True)
@@ -214,8 +216,8 @@ class HyperSlave():
 
 if __name__ == "__main__":
     master_port = 5678
-    if len(sys.argv) == 2:
-        master_port = sys.argv[1]
+    if len(argv) == 2:
+        master_port = argv[1]
     while True:
         try:
             client: HyperSlave = HyperSlave(master_port)

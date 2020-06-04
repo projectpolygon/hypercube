@@ -1,11 +1,14 @@
-import os
-from flask import Flask, request, Response, jsonify, send_file
+# External imports
+from flask import Flask, Response, jsonify, request, send_file
 from io import BytesIO
-import json
+from json import loads
+from os import environ, makedirs
 from zlib import compress, error as CompressException
-from common.networking import get_ip_addr
+
+# Internal imports
+from common.api.endpoints import DISCOVERY, FILE, HEARTBEAT, JOB, TASK, TASK_DATA
 from common.api.types import MasterInfo
-import common.api.endpoints as endpoints
+from common.networking import get_ip_addr
 
 
 class HyperMaster():
@@ -27,7 +30,7 @@ class HyperMaster():
 
     def create_routes(self, app, job_file_name):
 
-        @app.route(f'/{endpoints.JOB}')
+        @app.route(f'/{JOB}')
         def get_job():
             print('INFO: Job request from', request.environ.get(
                 'REMOTE_ADDR', 'default value'))
@@ -37,10 +40,10 @@ class HyperMaster():
 
             with open(job_file_name, "r") as job_file:
                 # read and parse the JSON
-                job_json = json.loads(job_file.read())
+                job_json = loads(job_file.read())
                 return jsonify(job_json)
 
-        @app.route(f'/{endpoints.FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
+        @app.route(f'/{FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
         def get_file(job_id: int, file_name: str):
             """
             Endpoint to handle file request from the slave
@@ -70,20 +73,20 @@ class HyperMaster():
                 print('Err:', e)
                 return Response(status=500)
 
-        @app.route(f'/{endpoints.TASK}/<int:job_id>', methods=["GET"])
+        @app.route(f'/{TASK}/<int:job_id>', methods=["GET"])
         def get_task(job_id: int):
             content = request.json
             # read the message for information
             # fetch task from the queue
             # return this task "formatted" back to slave
 
-        @app.route(f'/{endpoints.TASK_DATA}/<int:job_id>/<int:task_id>', methods=["POST"])
+        @app.route(f'/{TASK_DATA}/<int:job_id>/<int:task_id>', methods=["POST"])
         def task_data(job_id: int, task_id: int):
             message_data = request.json
             # read rest of data as JSON and pass payload to application
             # return 200 ok
 
-        @app.route(f'/{endpoints.DISCOVERY}')
+        @app.route(f'/{DISCOVERY}')
         def discovery():
             """
             Endpoint used for initial master discovery for the slave.
@@ -94,7 +97,7 @@ class HyperMaster():
             }
             return jsonify(master_info)
 
-        @app.route(f'/{endpoints.HEARTBEAT}')
+        @app.route(f'/{HEARTBEAT}')
         def heartbeat():
             """
             Heartbeat recieved from a slave, indicating it is still connected
@@ -161,9 +164,9 @@ def create_app(hyper_master: HyperMaster):
         app.config.from_mapping(hyper_master.test_config)
 
     job_file_name = ""
-    if "HYPER_JOBFILE_NAME" in os.environ:
+    if "HYPER_JOBFILE_NAME" in environ:
         print("INFO: using environment varible to set jobfile")
-        job_file_name = os.environ.get("HYPER_JOBFILE_NAME")
+        job_file_name = environ.get("HYPER_JOBFILE_NAME")
     else:
         print("USING jobfile")
         job_file_name = "jobfile"
@@ -171,7 +174,7 @@ def create_app(hyper_master: HyperMaster):
     # TODO: optional step
     # ensure the instance folder exists so configurations can be added
     try:
-        os.makedirs(app.instance_path)
+        makedirs(app.instance_path)
     except OSError:
         pass
 
