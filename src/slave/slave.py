@@ -2,7 +2,7 @@
 from pathlib import Path
 from random import random
 from requests import ConnectionError, Session, cookies
-from shlex import split
+from shlex import split as cmd_split
 from shutil import rmtree
 from subprocess import run
 from sys import argv
@@ -206,7 +206,7 @@ class HyperSlave():
         Execute a shell command outputing stdout/stderr to a result.txt file.
         Returns the shell commands returncode.
         """
-        args = split(command)
+        args = cmd_split(command)
 
         with open('ApplicationResultLog.txt', "w") as f:
             output = run(args, stdout=f, stderr=f, text=True)

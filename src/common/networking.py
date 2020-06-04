@@ -1,4 +1,4 @@
-from socket import AF_INET,SOCK_DGRAM,error as socket_error,socket
+from socket import AF_INET, SOCK_DGRAM, error as socket_error,socket
 
 def get_ip_addr():
     """
