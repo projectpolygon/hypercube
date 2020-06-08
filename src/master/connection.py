@@ -19,6 +19,7 @@ class Connection:
         self.timeout_secs: float = timeout_secs
         self.dead: Event = Event()
         self.timer: Timer = Timer(timeout_secs, self.timeout)
+        self.timer.daemon = True
         self.timer.start()
 
     def __hash__(self):
@@ -68,10 +69,12 @@ class ConnectionManager:
     """
 
     def __init__(self):
+        self.running = True
         self.connections = {}
         self.connections_cleanup_timeout = 3.0
         self.connections_cleanup_timer = Timer(
             self.connections_cleanup_timeout, self.cleanup_connections)
+        self.connections_cleanup_timer.daemon = True
         self.connections_cleanup_timer.start()
 
     def cleanup_connections(self):
@@ -88,10 +91,11 @@ class ConnectionManager:
                 print(f'INFO: Connection [{connection_id}]: removed')
         self.connections = active_connections
 
-        # Reset timer
-        self.connections_cleanup_timer = Timer(
-            self.connections_cleanup_timeout, self.cleanup_connections)
-        self.connections_cleanup_timer.start()
+        if(self.running):
+            # Reset timer
+            self.connections_cleanup_timer = Timer(
+                self.connections_cleanup_timeout, self.cleanup_connections)
+            self.connections_cleanup_timer.start()
 
     def add_connection(self, connection_id: str, timeout_secs: float = 5.0):
         """

@@ -5,6 +5,8 @@ from master.connection import Connection, ConnectionDead, ConnectionManager
 def test_add_get_connection():
     # Arrange
     connection_manager: ConnectionManager = ConnectionManager()
+    connection_manager.connections_cleanup_timer.cancel()
+    connection_manager.running = False
     connection_manager.add_connection('test_id')
     # Act
     connection = connection_manager.get_connection('test_id')
@@ -16,6 +18,8 @@ def test_add_get_connection():
 def test_get_connection_exception_no_connection():
     # Arrange
     connection_manager: ConnectionManager = ConnectionManager()
+    connection_manager.connections_cleanup_timer.cancel()
+    connection_manager.running = False
     with pytest.raises(ConnectionDead):
         # Act and Assert
         assert connection_manager.get_connection('non_existent')
@@ -24,6 +28,8 @@ def test_get_connection_exception_no_connection():
 def test_get_connection_exception_dead_connection():
     # Arrange
     connection_manager: ConnectionManager = ConnectionManager()
+    connection_manager.connections_cleanup_timer.cancel()
+    connection_manager.running = False
     connection_manager.add_connection('dead_conn')
     connection: Connection = connection_manager.get_connection('dead_conn')
     connection.timer.cancel()
@@ -37,6 +43,8 @@ def test_get_connection_exception_dead_connection():
 def test_reset_connection_timer():
     # Arrange
     connection_manager: ConnectionManager = ConnectionManager()
+    connection_manager.connections_cleanup_timer.cancel()
+    connection_manager.running = False
     connection_manager.add_connection('test_id')
     connection: Connection = connection_manager.get_connection('test_id')
     connection.timer.cancel()
@@ -50,6 +58,8 @@ def test_reset_connection_timer():
 def test_cleanup_connections():
     # Arrange
     connection_manager: ConnectionManager = ConnectionManager()
+    connection_manager.connections_cleanup_timer.cancel()
+    connection_manager.running = False
     connection_manager.add_connection('test_conn_1')
     conn_1 = connection_manager.get_connection('test_conn_1')
     connection_manager.add_connection('test_conn_2')
