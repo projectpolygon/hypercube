@@ -1,11 +1,14 @@
-import os
-from flask import Flask, request, Response, jsonify, send_file
+# External imports
+from flask import Flask, Response, jsonify, request, send_file
 from io import BytesIO
-import json
+from json import loads
+from os import environ, makedirs
 from zlib import compress, error as CompressException
-from common.networking import get_ip_addr
-from common.api.types import MasterInfo
+
+# Internal imports
 import common.api.endpoints as endpoints
+from common.api.types import MasterInfo
+from common.networking import get_ip_addr
 
 
 class HyperMaster():
@@ -37,7 +40,7 @@ class HyperMaster():
 
             with open(job_file_name, "r") as job_file:
                 # read and parse the JSON
-                job_json = json.loads(job_file.read())
+                job_json = loads(job_file.read())
                 return jsonify(job_json)
 
         @app.route(f'/{endpoints.FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
@@ -161,9 +164,9 @@ def create_app(hyper_master: HyperMaster):
         app.config.from_mapping(hyper_master.test_config)
 
     job_file_name = ""
-    if "HYPER_JOBFILE_NAME" in os.environ:
+    if "HYPER_JOBFILE_NAME" in environ:
         print("INFO: using environment varible to set jobfile")
-        job_file_name = os.environ.get("HYPER_JOBFILE_NAME")
+        job_file_name = environ.get("HYPER_JOBFILE_NAME")
     else:
         print("USING jobfile")
         job_file_name = "jobfile"
@@ -171,7 +174,7 @@ def create_app(hyper_master: HyperMaster):
     # TODO: optional step
     # ensure the instance folder exists so configurations can be added
     try:
-        os.makedirs(app.instance_path)
+        makedirs(app.instance_path)
     except OSError:
         pass
 
