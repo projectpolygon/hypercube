@@ -7,7 +7,7 @@ from zlib import compress, error as CompressException
 from common.networking import get_ip_addr
 from common.api.types import MasterInfo
 import common.api.endpoints as endpoints
-from .connection import Connection
+from .connection import ConnectionManager
 
 
 class HyperMaster():
@@ -17,23 +17,7 @@ class HyperMaster():
         self.PORT = PORT
         self.test_config = None
         self.task_queue = []
-        self.connections = {}
-        self.connections_cleanup_timeout = 3.0
-        self.connections_cleanup_timer = Timer(self.connections_cleanup_timeout, self.cleanup_connections)
-        self.connections_cleanup_timer.start()
-
-    def cleanup_connections(self):
-        active_connections = {}
-        for connection_id, connection in self.connections.items():
-            if connection.is_alive():
-                active_connections[connection_id] = connection
-            else: 
-                print(f'INFO: Connection [{connection_id}]: removed')
-        self.connections = active_connections
-        
-        # Reset timer
-        self.connections_cleanup_timer = Timer(self.connections_cleanup_timeout, self.cleanup_connections)
-        self.connections_cleanup_timer.start()
+        self.conn_manager: ConnectionManager = ConnectionManager()
 
     def start_server(self):
         app = create_app(self)
@@ -47,8 +31,7 @@ class HyperMaster():
                 'REMOTE_ADDR', 'default value'))
             conn_id = request.cookies.get('id')
             print('INFO: Saving connection:', conn_id)
-            connection = Connection(conn_id)
-            self.connections[conn_id] = connection
+            self.conn_manager.add_connection(conn_id)
 
             with open(job_file_name, "r") as job_file:
                 # read and parse the JSON
@@ -114,11 +97,10 @@ class HyperMaster():
             """
             Heartbeat recieved from a slave, indicating it is still connected
             """
-            # TODO: Update existing connection in set. Resets Timer
             conn_id = request.cookies.get('id')
             print('INFO: Updating connection:', conn_id)
-            connection: Connection = self.connections.get(conn_id)
-            connection.reset_timer()
+            self.conn_manager.reset_connection_timer(conn_id)
+            
             return Response(status=200)
 
     # functions that can be overridden to do user programmable tasks
