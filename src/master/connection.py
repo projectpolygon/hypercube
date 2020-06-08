@@ -68,10 +68,10 @@ class ConnectionManager:
     Manages active connections 
     """
 
-    def __init__(self):
+    def __init__(self, cleanup_timeout_secs = 3.0):
         self.running = True
         self.connections = {}
-        self.connections_cleanup_timeout = 3.0
+        self.connections_cleanup_timeout = cleanup_timeout_secs
         self.connections_cleanup_timer = Timer(
             self.connections_cleanup_timeout, self.cleanup_connections)
         self.connections_cleanup_timer.daemon = True
