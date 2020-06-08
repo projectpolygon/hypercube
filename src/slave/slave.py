@@ -1,16 +1,18 @@
-import sys
-from requests import Session, cookies, ConnectionError
-import shlex
+# External imports
 from pathlib import Path
+from random import random
+from requests import ConnectionError, Session, cookies
+from shlex import split as cmd_split
 from shutil import rmtree
 from subprocess import run
+from sys import argv
 from time import sleep
 from zlib import decompress, error as DecompressException
-from random import random
-from common.networking import get_ip_addr
-from common.api.types import MasterInfo
-import common.api.endpoints as endpoints
 
+# Internal imports
+import common.api.endpoints as endpoints
+from common.api.types import MasterInfo
+from common.networking import get_ip_addr
 
 class HyperSlave():
     """
@@ -204,7 +206,7 @@ class HyperSlave():
         Execute a shell command outputing stdout/stderr to a result.txt file.
         Returns the shell commands returncode.
         """
-        args = shlex.split(command)
+        args = cmd_split(command)
 
         with open('ApplicationResultLog.txt', "w") as f:
             output = run(args, stdout=f, stderr=f, text=True)
@@ -214,8 +216,8 @@ class HyperSlave():
 
 if __name__ == "__main__":
     master_port = 5678
-    if len(sys.argv) == 2:
-        master_port = sys.argv[1]
+    if len(argv) == 2:
+        master_port = argv[1]
     while True:
         try:
             client: HyperSlave = HyperSlave(master_port)
