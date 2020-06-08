@@ -6,7 +6,7 @@ from os import environ, makedirs
 from zlib import compress, error as CompressException
 
 # Internal imports
-from common.api.endpoints import DISCOVERY, FILE, HEARTBEAT, JOB, TASK, TASK_DATA
+import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
 from common.networking import get_ip_addr
 
@@ -30,7 +30,7 @@ class HyperMaster():
 
     def create_routes(self, app, job_file_name):
 
-        @app.route(f'/{JOB}')
+        @app.route(f'/{endpoints.JOB}')
         def get_job():
             print('INFO: Job request from', request.environ.get(
                 'REMOTE_ADDR', 'default value'))
@@ -43,7 +43,7 @@ class HyperMaster():
                 job_json = loads(job_file.read())
                 return jsonify(job_json)
 
-        @app.route(f'/{FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
+        @app.route(f'/{endpoints.FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
         def get_file(job_id: int, file_name: str):
             """
             Endpoint to handle file request from the slave
@@ -73,20 +73,20 @@ class HyperMaster():
                 print('Err:', e)
                 return Response(status=500)
 
-        @app.route(f'/{TASK}/<int:job_id>', methods=["GET"])
+        @app.route(f'/{endpoints.TASK}/<int:job_id>', methods=["GET"])
         def get_task(job_id: int):
             content = request.json
             # read the message for information
             # fetch task from the queue
             # return this task "formatted" back to slave
 
-        @app.route(f'/{TASK_DATA}/<int:job_id>/<int:task_id>', methods=["POST"])
+        @app.route(f'/{endpoints.TASK_DATA}/<int:job_id>/<int:task_id>', methods=["POST"])
         def task_data(job_id: int, task_id: int):
             message_data = request.json
             # read rest of data as JSON and pass payload to application
             # return 200 ok
 
-        @app.route(f'/{DISCOVERY}')
+        @app.route(f'/{endpoints.DISCOVERY}')
         def discovery():
             """
             Endpoint used for initial master discovery for the slave.
@@ -97,7 +97,7 @@ class HyperMaster():
             }
             return jsonify(master_info)
 
-        @app.route(f'/{HEARTBEAT}')
+        @app.route(f'/{endpoints.HEARTBEAT}')
         def heartbeat():
             """
             Heartbeat recieved from a slave, indicating it is still connected
