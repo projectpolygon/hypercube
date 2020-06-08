@@ -2,6 +2,7 @@
 from flask import Flask, Response, jsonify, request, send_file
 from io import BytesIO
 from json import loads
+from threading import Timer
 from os import environ, makedirs
 from zlib import compress, error as CompressException
 
@@ -9,6 +10,7 @@ from zlib import compress, error as CompressException
 import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
 from common.networking import get_ip_addr
+from .connection import ConnectionManager
 
 
 class HyperMaster():
@@ -18,11 +20,7 @@ class HyperMaster():
         self.PORT = PORT
         self.test_config = None
         self.task_queue = []
-        # unique set of connections.
-        # TODO: Maybe a subprocess or some other method to
-        #       check if connection still alive,
-        #       Heartbeat from slave would reset connections
-        self.connections = set()
+        self.conn_manager: ConnectionManager = ConnectionManager()
 
     def start_server(self):
         app = create_app(self)
@@ -36,7 +34,7 @@ class HyperMaster():
                 'REMOTE_ADDR', 'default value'))
             conn_id = request.cookies.get('id')
             print('INFO: Saving connection:', conn_id)
-            self.connections.add(conn_id)
+            self.conn_manager.add_connection(conn_id)
 
             with open(job_file_name, "r") as job_file:
                 # read and parse the JSON
@@ -102,10 +100,10 @@ class HyperMaster():
             """
             Heartbeat recieved from a slave, indicating it is still connected
             """
-            # TODO: Update existing connection in set. Resets Timer
             conn_id = request.cookies.get('id')
             print('INFO: Updating connection:', conn_id)
-            self.connections.add(conn_id)
+            self.conn_manager.reset_connection_timer(conn_id)
+            
             return Response(status=200)
 
     # functions that can be overridden to do user programmable tasks
