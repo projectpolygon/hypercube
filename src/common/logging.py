@@ -11,7 +11,7 @@ SET_END = '\033[0m'
 SET_BOLD = '\033[1m'
 SET_UNDERLINE = '\033[4m'
 
-SEPARATER = '*****************************************'
+SEPARATER = '========================================================'
 
 
 class Logger:
@@ -28,6 +28,7 @@ class Logger:
         self.print_bold(f'{SET_ERROR}ERROR', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
+        self.print_bold(f'{SEPARATER}\n')
 
     def log_warn(self, message: str, end='\n'):
         """
@@ -41,6 +42,7 @@ class Logger:
         self.print_bold(f'{SET_WARN}WARNING', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
+        self.print_bold(f'{SEPARATER}\n')
 
     def log_info(self, message: str, end='\n'):
         """
@@ -54,6 +56,7 @@ class Logger:
         self.print_bold(f'{SET_BLUE}INFO', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
+        self.print_bold(f'{SEPARATER}\n')
 
     def log_success(self,  message: str, header:str = 'SUCCESS', end='\n'):
         """
@@ -68,6 +71,7 @@ class Logger:
         self.print_bold(f'{SET_GREEN}{header}', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
+        self.print_bold(f'{SEPARATER}\n')
 
     def log_debug(self, message: str, end='\n'):
         """
@@ -81,6 +85,7 @@ class Logger:
         self.print_bold(f'{SET_PURPLE}DEBUG', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
+        self.print_bold(f'{SEPARATER}\n')
 
     def print_datetime(self, end='\n'):
         """

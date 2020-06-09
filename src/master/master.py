@@ -9,8 +9,11 @@ from zlib import compress, error as CompressException
 # Internal imports
 import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
+from common.logging import Logger
 from common.networking import get_ip_addr
 from .connection import ConnectionManager
+
+logger = Logger()
 
 
 class HyperMaster():
@@ -30,10 +33,12 @@ class HyperMaster():
 
         @app.route(f'/{endpoints.JOB}')
         def get_job():
-            print('INFO: Job request from', request.environ.get(
-                'REMOTE_ADDR', 'default value'))
+            """
+            Endpoint to handle job request from the slave
+            """
             conn_id = request.cookies.get('id')
-            print('INFO: Saving connection:', conn_id)
+
+            logger.log_info(f'Job request from {conn_id},\nSaving connection...')
             self.conn_manager.add_connection(conn_id)
 
             with open(job_file_name, "r") as job_file:
@@ -48,8 +53,7 @@ class HyperMaster():
             """
             try:
                 with open(file_name, "rb") as file:
-                    print("INFO: sending {} as part of job {}".format(
-                        file_name, job_id))
+                    logger.log_info(f'Sending {file_name} as part of job {job_id}')
                     file_data = file.read()
                     compressed_data = compress(file_data)
                     return send_file(
@@ -60,15 +64,15 @@ class HyperMaster():
                     )
 
             except CompressException as e:
-                print('Err:', e)
+                logger.log_error(e)
                 return Response(status=500)
 
             except FileNotFoundError as e:
-                print('Err:', e)
+                logger.log_error(e)
                 return Response(status=404)
 
             except Exception as e:
-                print('Err:', e)
+                logger.log_error(e)
                 return Response(status=500)
 
         @app.route(f'/{endpoints.TASK}/<int:job_id>', methods=["GET"])
@@ -101,9 +105,9 @@ class HyperMaster():
             Heartbeat recieved from a slave, indicating it is still connected
             """
             conn_id = request.cookies.get('id')
-            print('INFO: Updating connection:', conn_id)
+            logger.log_info(f'Updating connection [{conn_id}]...')
             self.conn_manager.reset_connection_timer(conn_id)
-            
+
             return Response(status=200)
 
     # functions that can be overridden to do user programmable tasks
@@ -163,10 +167,10 @@ def create_app(hyper_master: HyperMaster):
 
     job_file_name = ""
     if "HYPER_JOBFILE_NAME" in environ:
-        print("INFO: using environment varible to set jobfile")
+        logger.log_info('Using environment varible to set jobfile')
         job_file_name = environ.get("HYPER_JOBFILE_NAME")
     else:
-        print("USING jobfile")
+        logger.log_info('Using provided jobfile')
         job_file_name = "jobfile"
 
     # TODO: optional step
