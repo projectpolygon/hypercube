@@ -1,6 +1,10 @@
 from time import time
 from threading import Timer, Event
 
+from common.logging import Logger
+
+logger = Logger()
+
 
 class ConnectionDead(Exception):
     """
@@ -52,7 +56,7 @@ class Connection:
         Called when the set ammount of timeout seconds has been reached
         without a reset. This sets the dead flag of the connection  
         """
-        print(f'INFO: Connection [{self.connection_id}]: timed out')
+        logger.log_warn(f'Connection [{self.connection_id}]: timed out')
         self.dead.set()
 
     def is_alive(self):
@@ -68,7 +72,7 @@ class ConnectionManager:
     Manages active connections 
     """
 
-    def __init__(self, cleanup_timeout_secs = 3.0):
+    def __init__(self, cleanup_timeout_secs=3.0):
         self.running = True
         self.connections = {}
         self.connections_cleanup_timeout = cleanup_timeout_secs
@@ -88,7 +92,7 @@ class ConnectionManager:
             if connection.is_alive():
                 active_connections[connection_id] = connection
             else:
-                print(f'INFO: Connection [{connection_id}]: removed')
+                logger.log_info(f'Connection [{connection_id}]: removed')
         self.connections = active_connections
 
         if(self.running):
@@ -104,6 +108,7 @@ class ConnectionManager:
         """
         connection: Connection = Connection(connection_id, timeout_secs)
         self.connections[connection_id] = connection
+        logger.log_success('Connection [{self.connection_id}] Added', 'NEW CONNECTION')
 
     def reset_connection_timer(self, conn_id):
         """
@@ -111,6 +116,7 @@ class ConnectionManager:
         """
         connection: Connection = self.connections.get(conn_id)
         connection.reset_timer()
+        logger.log_info('Connection [{self.connection_id}] reset')
 
     def get_connection(self, connection_id: str):
         """

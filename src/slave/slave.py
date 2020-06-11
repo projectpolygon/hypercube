@@ -12,7 +12,11 @@ from zlib import decompress, error as DecompressException
 # Internal imports
 import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
+from common.logging import Logger
 from common.networking import get_ip_addr
+
+logger = Logger()
+
 
 class HyperSlave():
     """
@@ -44,7 +48,7 @@ class HyperSlave():
                     return session
                 
                 except ValueError:
-                    print('INFO: Master provided no info')
+                    logger.log_error('Master provided no info')
 
 
         except ConnectionError:
@@ -53,10 +57,10 @@ class HyperSlave():
         except Exception as e:
             # allows breaking out of the loop
             if e == KeyboardInterrupt:
-                print('Keyboard Interrupt detected. Exiting...')
+                logger.log_debug('Keyboard Interrupt detected. Exiting...')
                 exit(0)
             else:
-                print('ERR:', e)
+                logger.log_error(e)
                 exit(1)
                 
         return None
@@ -67,18 +71,16 @@ class HyperSlave():
         """
         self.IP_ADDR = get_ip_addr()
         network_id = self.IP_ADDR.rpartition('.')[0]
-        print('INFO: attempting master connection')
+        logger.log_info('Attempting master connection')
         for i in range(0, 255):
             hostname = network_id + "." + str(i)
             session = self.connect(hostname, master_port)
             if session is not None:
                 self.set_session(session)
-                print("\rINFO: master found at: ",
-                      hostname + ':' + str(master_port))
+                logger.log_success(f"Connected to {hostname}:{master_port}", "MASTER CONNECTED")
                 return hostname
             else:
-                print("\rINFO: master not at: ", hostname +
-                      ':' + str(master_port), end='')
+                print(f'\rMaster not at: {hostname}:{master_port}', end='')
         return None
 
     def set_session(self, session: Session):
@@ -105,27 +107,28 @@ class HyperSlave():
             with open("./job" + str(self.job_id) + "/" + file_name, 'wb') as new_file:
                 new_file.write(file_data)
         except OSError as e:
-            print("ERR:", e)
+            logger.log_error(e)
             return
-        print("INFO: Saved.")
+        logger.log_success('Processed data saved')
 
     def get_file(self, file_name):
         """
         Requests a file from the master.
         Returns a success boolean
         """
-        print("INFO: requesting file: {}".format(file_name))
+        logger.log_info(f'requesting file: {file_name}')
         resp = self.session.get(f'http://{self.HOST}:{self.PORT}/{endpoints.FILE}/{self.job_id}/{file_name}')
         if not resp:
-            print("ERR: file was not returned")
+            logger.log_error(f'File: {file_name} was not returned')
             return False
 
-        print("INFO: File: {} recieved. Saving now...".format(file_name))
+
+        logger.log_info(f'File: {file_name} recieved. Saving now...')
 
         try:
             file_data = decompress(resp.content)
         except DecompressException as e:
-            print('Err:', e)
+            logger.log_error(e)
             return False
 
         self.save_processed_data(file_name, file_data)
@@ -149,7 +152,7 @@ class HyperSlave():
             self.job_id: int = job_json.get("job_id")
             job_file_names: list = job_json.get("file_names")
         except:
-            print("ERR: job data JSON not received. Cannot continue")
+            logger.log_error('Job data JSON not received. Cannot continue')
             return
 
         # create a working directory
@@ -177,13 +180,13 @@ class HyperSlave():
             if resp.status_code == 200:
                 return True
             else:
-                print("ERR: Connection is not healthy")
+                logger.log_warn(f"Connection is not healthy ({self.HOST}:{self.PORT})")
 
         except ConnectionError:
-            print("ERR: Master cannot be reached.")
+            logger.log_error(f"Master cannot be reached. ({self.HOST}:{self.PORT})")
 
         except Exception as e:
-            print("ERR:", e)
+            logger.log_error(e)
         
         return False
 
@@ -196,9 +199,8 @@ class HyperSlave():
             self.HOST = self.attempt_master_connection(self.PORT)
             if self.HOST is not None:
                 break
-            print('\nINFO: Retrying...',)
+            logger.log_info("Retrying...")
             sleep(1)
-        print("INFO: Connection Successful")
         self.req_job()
 
     def run_shell_command(self, command):
@@ -223,5 +225,5 @@ if __name__ == "__main__":
             client: HyperSlave = HyperSlave(master_port)
             client.start()
         except KeyboardInterrupt as e:
-            print("\nINFO: graceful shutdown...")
+            logger.log_debug('Graceful shutdown...')
             break
