@@ -32,7 +32,8 @@ RUN pip3 install \
     -r master/requirements.txt
 
 # run common and master unit tests
-RUN pytest tests/common_tests tests/master_tests
+RUN coverage run -m pytest tests/common_tests tests/master_tests
+RUN coverage xml -o coverage.master.xml
 
 
 # ====== Master ======

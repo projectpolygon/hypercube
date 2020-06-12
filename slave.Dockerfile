@@ -32,7 +32,8 @@ RUN pip3 install \
     # -r common/requirements.txt # no common specific requirements yet
 
 # run common and slave unit tests
-RUN pytest tests/common_tests tests/slave_tests
+RUN coverage run -m pytest tests/common_tests tests/slave_tests
+RUN coverage xml -o coverage.slave.xml
 
 
 # ====== Slave ======

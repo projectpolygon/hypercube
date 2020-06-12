@@ -50,3 +50,4 @@ src/instance/
 *paths.hpp
 
 __pycache__/
+.coverage
