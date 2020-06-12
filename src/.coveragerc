@@ -7,5 +7,5 @@ exclude_lines =
     if __name__ == .__main__.:
 ignore_errors = True
 omit =
-    src/tests/*
-    src/**/__init__.py
+    ./**/*tests*
+    ./**/__init__.py
