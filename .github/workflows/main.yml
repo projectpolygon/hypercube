@@ -19,8 +19,58 @@ jobs:
       - name: Run Master unit tests
         run: docker build -f "master.Dockerfile" -t master/unit_tests --target test-env .
 
+      - name: Extract master unit test results from Docker container
+        run: |
+          CID=$(docker create master/unit_tests)
+          mkdir -p TestResults
+          docker cp $CID:/hypercube/coverage.master.xml - > TestResults/master-test-report.tar
+          docker rm -v $CID
+          cd TestResults
+          tar -xvf master-test-report.tar
+
       - name: Run Slave unit tests
         run: docker build -f "slave.Dockerfile" -t slave/unit_tests --target test-env .
+
+      - name: Extract slave unit test results from Docker container
+        run: |
+          CID=$(docker create slave/unit_tests)
+          mkdir -p TestResults
+          docker cp $CID:/hypercube/coverage.slave.xml - > TestResults/slave-test-report.tar
+          docker rm -v $CID
+          cd TestResults
+          tar -xvf slave-test-report.tar
+
+      - name: Upload Test Results Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          # Artifact name
+          name: TestResults
+          # Directory containing files to upload
+          path: TestResults
+
+      - name: Upload Master Test Coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          # Repository upload token
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # Path to coverage file to upload
+          file: TestResults/coverage.master.xml
+          # Flag upload to group coverage metrics (e.g. unittests | integration | ui,chrome)
+          flags: unittests
+          # Specify whether or not CI build should fail if Codecov runs into an error during upload
+          fail_ci_if_error: true
+
+      - name: Upload Slave Test Coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          # Repository upload token
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # Path to coverage file to upload
+          file: TestResults/coverage.slave.xml
+          # Flag upload to group coverage metrics (e.g. unittests | integration | ui,chrome)
+          flags: unittests
+          # Specify whether or not CI build should fail if Codecov runs into an error during upload
+          fail_ci_if_error: true
 
   build_and_deploy:
     # if the commit message doesnt contain [skip-ci] then run this job
