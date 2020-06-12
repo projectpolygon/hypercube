@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+# Check OS
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    :
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    # Mac OSX
+    # Might work, not tested
+    echo "This script does not currently support Mac OSX. Please read docs on manual startup..." >&2
+    exit 1
+elif [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" ]]; then
+    # POSIX compatibility layer and Linux environment emulation for Windows
+    # Might work, not tested
+    echo "This script does not currently support Windows. Please read docs on manual startup..." >&2
+    # Non standard exit code
+    exit 1
+else
+    echo "This script does not currently support your OS. Please read docs on manual startup..." >&2
+    exit 1
+fi
+
+# Check if Docker is installed
+docker -v >/dev/null 2>&1 || { echo "Docker is not installed." >&2; exit 1; }
+
+
+# Successfull run of script, exit 0
+exit 0
