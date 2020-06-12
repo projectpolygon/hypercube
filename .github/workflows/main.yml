@@ -20,13 +20,13 @@ jobs:
         run: docker build -f "master.Dockerfile" -t master/unit_tests --target test-env .
 
       - name: Extract master unit test results from Docker container
-      run: |
-        CID=$(docker create master/unit_tests)
-        mkdir -p TestResults
-        docker cp $CID:/hypercube/coverage.master.xml - > TestResults/master-test-report.tar
-        docker rm -v $CID
-        cd TestResults
-        tar -xvf master-test-report.tar
+        run: |
+          CID=$(docker create master/unit_tests)
+          mkdir -p TestResults
+          docker cp $CID:/hypercube/coverage.master.xml - > TestResults/master-test-report.tar
+          docker rm -v $CID
+          cd TestResults
+          tar -xvf master-test-report.tar
 
       - name: Run Slave unit tests
         run: docker build -f "slave.Dockerfile" -t slave/unit_tests --target test-env .
