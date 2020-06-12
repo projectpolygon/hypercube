@@ -1,6 +1,11 @@
-from time import time
+"""
+Contains implemented functionality for handling connections between the master and slave nodes
+"""
+
+# External imports
 from threading import Timer, Event
 
+# Internal imports
 from common.logging import Logger
 
 logger = Logger()
@@ -10,12 +15,11 @@ class ConnectionDead(Exception):
     """
     Exception raised when the connection has timed out
     """
-    pass
 
 
 class Connection:
     """
-    Connection object 
+    Connection object
     """
 
     def __init__(self, connection_id, timeout_secs=5.0):
@@ -44,7 +48,7 @@ class Connection:
         """
         Resets the timer for the connection
         """
-        if(self.is_alive()):
+        if self.is_alive():
             self.timer.cancel()
             self.timer = Timer(self.timeout_secs, self.timeout)
             self.timer.start()
@@ -54,7 +58,7 @@ class Connection:
     def timeout(self):
         """
         Called when the set ammount of timeout seconds has been reached
-        without a reset. This sets the dead flag of the connection  
+        without a reset. This sets the dead flag of the connection
         """
         logger.log_warn(f'Connection [{self.connection_id}]: timed out')
         self.dead.set()
@@ -69,7 +73,7 @@ class Connection:
 class ConnectionManager:
     """
     ConnectionManager object
-    Manages active connections 
+    Manages active connections
     """
 
     def __init__(self, cleanup_timeout_secs=3.0):
@@ -95,7 +99,7 @@ class ConnectionManager:
                 logger.log_info(f'Connection [{connection_id}]: removed')
         self.connections = active_connections
 
-        if(self.running):
+        if self.running:
             # Reset timer
             self.connections_cleanup_timer = Timer(
                 self.connections_cleanup_timeout, self.cleanup_connections)
@@ -126,5 +130,5 @@ class ConnectionManager:
         connection: Connection = self.connections.get(connection_id)
         if connection and connection.is_alive():
             return connection
-        else:
-            raise ConnectionDead
+
+        raise ConnectionDead
