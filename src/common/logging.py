@@ -1,6 +1,8 @@
-from enum import Enum
-from time import strftime
+"""
+Implementation of logging capabilities to be used by the master and slave
+"""
 
+from time import strftime
 
 SET_PURPLE = '\033[95m'
 SET_BLUE = '\033[94m'
@@ -15,11 +17,13 @@ SEPARATER = '========================================================'
 
 
 class Logger:
-
+    """
+    Provides functionality to log errors, warnings, info, success, and debug
+    """
     def log_error(self, message: str, end='\n'):
         """
         Logs error messages
-        
+
         Params:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
@@ -33,7 +37,7 @@ class Logger:
     def log_warn(self, message: str, end='\n'):
         """
         Logs warning messages
-        
+
         Params:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
@@ -47,7 +51,7 @@ class Logger:
     def log_info(self, message: str, end='\n'):
         """
         Logs info messages
-        
+
         Params:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
@@ -58,10 +62,10 @@ class Logger:
         print(f':\n{message}', end=end)
         self.print_bold(f'{SEPARATER}\n')
 
-    def log_success(self,  message: str, header:str = 'SUCCESS', end='\n'):
+    def log_success(self, message: str, header: str = 'SUCCESS', end='\n'):
         """
         Logs success messages
-        
+
         Params:
             message: str - the message to log
             header: str (optional) - string for the message header tag. Defaults to 'Success'
@@ -76,7 +80,7 @@ class Logger:
     def log_debug(self, message: str, end='\n'):
         """
         Logs debug messages
-        
+
         Params:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
@@ -98,23 +102,24 @@ class Logger:
         self.print_bold(
             f'[{strftime("%d %b %Y - %H:%M:%S")}]', end=end)
 
-    def print_bold(self, message: str, end='\n'):
+    @staticmethod
+    def print_bold(message: str, end='\n'):
         """
         **Meant for use internally**
-
         Prints the message in bold formatting
 
         Params:
             message: str - the message to print
             end: str (optional) - string appended to the end of the message. Defaults to newline
-
         """
         print(f'{SET_BOLD}{message}{SET_END}', end=end)
 
-    def test_colours(self):
+    @staticmethod
+    def test_colours():
         """
         **Meant for internal use**
         """
+
         print(f'{SET_PURPLE}PURPLE{SET_END} ', end='')
         print(f'{SET_BLUE}BLUE{SET_END} ', end='')
         print(f'{SET_GREEN}GREEN{SET_END} ', end='')

@@ -1,10 +1,13 @@
+"""
+Implemented fuctionality to run a master node for a distributed workload
+"""
+
 # External imports
-from flask import Flask, Response, jsonify, request, send_file
 from io import BytesIO
 from json import loads
-from threading import Timer
 from os import environ, makedirs
 from zlib import compress, error as CompressException
+from flask import Flask, Response, jsonify, request, send_file
 
 # Internal imports
 import common.api.endpoints as endpoints
@@ -15,23 +18,33 @@ from .connection import ConnectionManager
 
 logger = Logger()
 
-
 class HyperMaster():
+    """
+    When the master is started, this class should be what the user application
+    can import to begin using the features of the system on the master itself
+    """
 
     def __init__(self, HOST="0.0.0.0", PORT=5678):
-        self.HOST = HOST
-        self.PORT = PORT
+        self.host = HOST
+        self.port = PORT
         self.test_config = None
         self.task_queue = []
         self.conn_manager: ConnectionManager = ConnectionManager()
 
     def start_server(self):
+        """
+        Starts the server
+        """
         app = create_app(self)
-        app.run(host=self.HOST, port=self.PORT, debug=True)
+        app.run(host=self.host, port=self.port, debug=True)
 
     def create_routes(self, app, job_file_name):
+        """
+        Creates the required routes
+        """
 
         @app.route(f'/{endpoints.JOB}')
+        # pylint: disable=W0612
         def get_job():
             """
             Endpoint to handle job request from the slave
@@ -47,6 +60,7 @@ class HyperMaster():
                 return jsonify(job_json)
 
         @app.route(f'/{endpoints.FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
+        # pylint: disable=W0612
         def get_file(job_id: int, file_name: str):
             """
             Endpoint to handle file request from the slave
@@ -63,32 +77,39 @@ class HyperMaster():
                         attachment_filename=file_name
                     )
 
-            except CompressException as e:
-                logger.log_error(e)
+            except CompressException as error:
+                logger.log_error(error)
                 return Response(status=500)
 
-            except FileNotFoundError as e:
-                logger.log_error(e)
+            except FileNotFoundError as error:
+                logger.log_error(error)
                 return Response(status=404)
 
-            except Exception as e:
-                logger.log_error(e)
+            except Exception as error:
+                logger.log_error(error)
                 return Response(status=500)
 
         @app.route(f'/{endpoints.TASK}/<int:job_id>', methods=["GET"])
-        def get_task(job_id: int):
-            content = request.json
-            # read the message for information
-            # fetch task from the queue
-            # return this task "formatted" back to slave
+        # pylint: disable=W0612
+        def get_task():
+            """
+            arguments: job_id: int
+            read the message for information
+            fetch task from the queue
+            return this task "formatted" back to slave
+            """
 
         @app.route(f'/{endpoints.TASK_DATA}/<int:job_id>/<int:task_id>', methods=["POST"])
-        def task_data(job_id: int, task_id: int):
-            message_data = request.json
-            # read rest of data as JSON and pass payload to application
-            # return 200 ok
+        # pylint: disable=W0612
+        def task_data():
+            """
+            arguments: job_id: int, task_id: int
+            read rest of data as JSON and pass payload to application
+            return 200 ok
+            """
 
         @app.route(f'/{endpoints.DISCOVERY}')
+        # pylint: disable=W0612
         def discovery():
             """
             Endpoint used for initial master discovery for the slave.
@@ -100,6 +121,7 @@ class HyperMaster():
             return jsonify(master_info)
 
         @app.route(f'/{endpoints.HEARTBEAT}')
+        # pylint: disable=W0612
         def heartbeat():
             """
             Heartbeat recieved from a slave, indicating it is still connected
@@ -117,41 +139,38 @@ class HyperMaster():
         """
         Bind a handle to each call to JOB_GET
         """
-        pass
 
     def job_get_handle_func(self, arg):
         """
         do stuff
         """
-        pass
 
     def set_task_get_handle(self):
         """
         Bind a handle to each call to TASK_GET
         """
-        pass
 
     def task_get_handle_func(self, arg):
         """
         do stuff
         """
-        pass
 
     def set_file_get_handle(self):
         """
         Bind a handle to each call to FILE_GET
         """
-        pass
 
     def file_get_handle_func(self, arg):
         """
         do stuff
         """
-        pass
 
 
 # OVERLOADED DO NOT RENAME
 def create_app(hyper_master: HyperMaster):
+    """
+    Creates and lauches the master node application
+    """
 
     # create and configure the Flask app
     app = Flask(__name__, instance_relative_config=True)
