@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# Check OS
+
+### Check environment setup
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     :
 elif [[ "$OSTYPE" == "darwin"* ]]; then
@@ -18,10 +19,84 @@ else
     echo "This script does not currently support your OS. Please read docs on manual startup..." >&2
     exit 1
 fi
-
 # Check if Docker is installed
 docker -v >/dev/null 2>&1 || { echo "Docker is not installed." >&2; exit 1; }
 
+
+### Functions
+usage()
+{
+    echo "Usage: run_master [OPTIONS]"
+}
+
+help()
+{
+    usage
+    echo
+    printf "A utility script for running the master \n
+Options:
+    -l, --local     Use local docker images instead of pulling from DockerHub
+    -h, --help      Displays this help message
+"
+    echo
+}
+
+
+### Main
+# Constants
+TRUE=0
+FALSE=1
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+JOB_DIR="${DIR}/job"
+# Defaults
+USE_LOCAL=FALSE
+DOCKER_IMAGE="hypercube:master"
+PORT=5678
+
+while [[ "$1" != "" ]]; do
+    case $1 in
+        -p | --port )           shift
+                                PORT=$1
+                                ;;
+        -l | --local )          USE_LOCAL=TRUE
+                                ;;
+        -h | --help )           help
+                                exit 0
+                                ;;
+        * )                     usage
+                                exit 1
+    esac
+    shift
+done
+
+# Prepare Docker Image
+if [[ $USE_LOCAL == TRUE ]]; then
+    docker build --rm -f "master.Dockerfile" -t ${DOCKER_IMAGE} "." || {
+        echo "Docker local image build failure. See log above for the error message"
+        exit 1
+    }
+elif [[ $USE_LOCAL == FALSE ]]; then
+    docker pull projectpolygon/hypercube:master || {
+        echo "DockerHub image pull failure. See log above for the error message"
+        exit 1
+    }
+    DOCKER_IMAGE="projectpolygon/hypercube:master"
+else
+    echo "Docker local flag error."
+    exit 1
+fi
+echo ""
+
+# Create job dir if doesn't exist
+if [[ ! -d "$JOB_DIR" ]]; then
+    mkdir -p $JOB_DIR
+    echo -e "Master Job Directory created.\nPlace jobfile in here: $JOB_DIR\n"
+fi
+
+# Run docker image and attach job dir as volume
+docker run -it -p 5678:${PORT} -v $JOB_DIR:/hypercube/job hypercube:master || {
+    exit 1
+}
 
 # Successfull run of script, exit 0
 exit 0
