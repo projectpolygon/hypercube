@@ -94,7 +94,7 @@ if [[ ! -d "$JOB_DIR" ]]; then
 fi
 
 # Run docker image and attach job dir as volume
-docker run -it -p 5678:${PORT} -v $JOB_DIR:/hypercube/job hypercube:master || {
+docker run -it -p 5678:${PORT} -v $JOB_DIR:/hypercube/job ${DOCKER_IMAGE} || {
     exit 1
 }
 
