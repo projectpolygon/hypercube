@@ -1,13 +1,17 @@
+"""
+Implemented fuctionality to run a slave node for a distributed workload
+"""
+
 # External imports
 from pathlib import Path
 from random import random
-from requests import ConnectionError, Session, cookies
 from shlex import split as cmd_split
 from shutil import rmtree
-from subprocess import run
-from sys import argv
+from subprocess import CalledProcessError, run
+from sys import argv, exit as sys_exit
 from time import sleep
 from zlib import decompress, error as DecompressException
+from requests import Session, cookies
 
 # Internal imports
 import common.api.endpoints as endpoints
@@ -26,18 +30,18 @@ class HyperSlave():
 
     def __init__(self, PORT=5678):
         self.session: Session = None
-        self.IP_ADDR = None
-        self.HOST = None
-        self.PORT = PORT
-        self.JOB_PATH = None
+        self.ip_addr = None
+        self.host = None
+        self.port = PORT
         self.job_id = None
+        self.job_path = None
         self.master_info: MasterInfo = None
 
     def init_job_root(self):
         cwd = str(Path.cwd().resolve())
         job_root_dir_path = cwd + '/job'
         Path.mkdir(Path(job_root_dir_path), parents=True, exist_ok=True)
-        self.JOB_PATH = job_root_dir_path
+        self.job_path = job_root_dir_path
 
     def connect(self, hostname, port):
         """
@@ -53,31 +57,30 @@ class HyperSlave():
                 try:
                     self.master_info = MasterInfo(resp.json())
                     return session
-                
+
                 except ValueError:
                     logger.log_error('Master provided no info')
-
 
         except ConnectionError:
             return None
 
-        except Exception as e:
-            # allows breaking out of the loop
-            if e == KeyboardInterrupt:
-                logger.log_debug('Keyboard Interrupt detected. Exiting...')
-                exit(0)
-            else:
-                logger.log_error(e)
-                exit(1)
-                
+        # allows breaking out of the loop
+        except KeyboardInterrupt:
+            logger.log_debug('Keyboard Interrupt detected. Exiting...')
+            sys_exit(0)
+
+        except Exception as error:
+            logger.log_error(error)
+            sys_exit(1)
+
         return None
 
     def attempt_master_connection(self, master_port):
         """
         Attempt to find and connect to the master node
         """
-        self.IP_ADDR = get_ip_addr()
-        network_id = self.IP_ADDR.rpartition('.')[0]
+        self.ip_addr = get_ip_addr()
+        network_id = self.ip_addr.rpartition('.')[0]
         logger.log_info('Attempting master connection')
         for i in range(0, 255):
             hostname = network_id + "." + str(i)
@@ -86,12 +89,15 @@ class HyperSlave():
                 self.set_session(session)
                 logger.log_success(f"Connected to {hostname}:{master_port}", "MASTER CONNECTED")
                 return hostname
-            else:
-                print(f'\rMaster not at: {hostname}:{master_port}', end='')
+        print(f'\rMaster not at: {hostname}:{master_port}', end='')
         return None
 
     def set_session(self, session: Session):
-        session_id = self.IP_ADDR + '-' + str(random() * random() * 123456789)
+        """
+        Setup the session through the use of a cookie
+        Cookie is created with a unique session id
+        """
+        session_id = self.ip_addr + '-' + str(random() * random() * 123456789)
         cookie = cookies.create_cookie('id', session_id)
         session.cookies.set_cookie(cookie)
         self.session = session
@@ -102,7 +108,7 @@ class HyperSlave():
         Overwrites the directory if it exists
         """
         
-        path = f'{self.JOB_PATH}/{self.job_id}'
+        path = f'{self.job_path}/{self.job_id}'
         rmtree(path=path, ignore_errors=True)
         Path(path).mkdir(parents=True, exist_ok=False)
         return path
@@ -112,10 +118,10 @@ class HyperSlave():
         Write job bytes to file
         """
         try:
-            with open(f'{self.JOB_PATH}/{self.job_id}/{file_name}', 'wb') as new_file:
+            with open(f'{self.job_path}/{self.job_id}/{file_name}', 'wb') as new_file:
                 new_file.write(file_data)
-        except OSError as e:
-            logger.log_error(e)
+        except OSError as error:
+            logger.log_error(error)
             return
         logger.log_success('Processed data saved')
 
@@ -125,7 +131,9 @@ class HyperSlave():
         Returns a success boolean
         """
         logger.log_info(f'requesting file: {file_name}')
-        resp = self.session.get(f'http://{self.HOST}:{self.PORT}/{endpoints.FILE}/{self.job_id}/{file_name}')
+        resp = self.session.get(
+            f'http://{self.host}:{self.port}/{endpoints.FILE}/{self.job_id}/{file_name}'
+            )
         if not resp:
             logger.log_error(f'File: {file_name} was not returned')
             return False
@@ -135,8 +143,8 @@ class HyperSlave():
 
         try:
             file_data = decompress(resp.content)
-        except DecompressException as e:
-            logger.log_error(e)
+        except DecompressException as error:
+            logger.log_error(error)
             return False
 
         self.save_processed_data(file_name, file_data)
@@ -148,7 +156,7 @@ class HyperSlave():
         """
 
         resp = self.session.get(
-            f'http://{self.HOST}:{self.PORT}/{endpoints.JOB}', timeout=5)
+            f'http://{self.host}:{self.port}/{endpoints.JOB}', timeout=5)
 
         # return if there is no job
         if not resp:
@@ -159,7 +167,7 @@ class HyperSlave():
             job_json = resp.json()
             self.job_id: int = job_json.get("job_id")
             job_file_names: list = job_json.get("file_names")
-        except:
+        except Exception:
             logger.log_error('Job data JSON not received. Cannot continue')
             return
 
@@ -181,62 +189,72 @@ class HyperSlave():
             continue
 
     def send_heartbeat(self):
+        """
+        Send heartbeat to the master to keep its connection with master
+        """
         try:
             resp = self.session.get(
-                url=f'http://{self.HOST}:{self.PORT}/{endpoints.HEARTBEAT}', timeout=1)
+                url=f'http://{self.host}:{self.port}/{endpoints.HEARTBEAT}', timeout=1)
 
             if resp.status_code == 200:
                 return True
-            else:
-                logger.log_warn(f"Connection is not healthy ({self.HOST}:{self.PORT})")
+
+            logger.log_warn(f"Connection is not healthy ({self.host}:{self.port})")
 
         except ConnectionError:
-            logger.log_error(f"Master cannot be reached. ({self.HOST}:{self.PORT})")
+            logger.log_error(f"Master cannot be reached. ({self.host}:{self.port})")
 
-        except Exception as e:
-            logger.log_error(e)
-        
+        except Exception as error:
+            logger.log_error(error)
+
         return False
 
     def start(self):
         """
         Initializes job root directory,
         polls network for job server (master),
-        then requests a job from the master 
+        then requests a job from the master
         """
         self.init_job_root()
 
-        self.HOST = None
-        while self.HOST is None:
-            self.HOST = self.attempt_master_connection(self.PORT)
-            if self.HOST is not None:
+        self.host = None
+        while self.host is None:
+            self.host = self.attempt_master_connection(self.port)
+            if self.host is not None:
                 break
             logger.log_info("Retrying...")
             sleep(1)
 
         self.req_job()
 
-    def run_shell_command(self, command):
-        """
-        Execute a shell command outputing stdout/stderr to a result.txt file.
-        Returns the shell commands returncode.
-        """
-        args = cmd_split(command)
+def run_shell_command(command):
+    """
+    Execute a shell command outputing stdout/stderr to a result.txt file.
+    Returns the shell commands returncode.
+    """
+    args = cmd_split(command)
 
-        with open('ApplicationResultLog.txt', "w") as f:
-            output = run(args, stdout=f, stderr=f, text=True)
+    try:
+        with open('ApplicationResultLog.txt', "w") as result_file:
+            output = run(args, stdout=result_file, stderr=result_file, text=True, check=True)
 
         return output.returncode
 
+    except CalledProcessError as error:
+        logger.log_error(error.output.decode('utf-8'))
+
 
 if __name__ == "__main__":
-    master_port = 5678
+    MASTER_PORT = 5678
     if len(argv) == 2:
-        master_port = argv[1]
+        MASTER_PORT = int(argv[1])
+    elif len(argv) > 2:
+        logger.log_error('Too many arguments given')
+        sys_exit(1)
     while True:
         try:
-            client: HyperSlave = HyperSlave(master_port)
+            client: HyperSlave = HyperSlave(MASTER_PORT)
             client.start()
-        except KeyboardInterrupt as e:
+        except KeyboardInterrupt:
             logger.log_debug('Graceful shutdown...')
             break
