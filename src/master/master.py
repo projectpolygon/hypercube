@@ -7,6 +7,7 @@ from io import BytesIO
 from json import loads as json_loads
 from os import makedirs
 from pathlib import Path
+from sys import exit as sys_exit
 from time import sleep
 from zlib import compress, error as CompressException
 from flask import Flask, Response, jsonify, request, send_file
@@ -65,7 +66,7 @@ class HyperMaster():
             if not Path(f'{job_root_dir_path}/{file_name}').exists():
                 logger.log_error(
                     f'{file_name} not found in job folder. Cannot continue')
-                exit(1)
+                sys_exit(1)
 
         self.jobfile_path = jobfile_path
         self.job_path = job_root_dir_path
