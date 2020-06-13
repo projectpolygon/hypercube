@@ -1,4 +1,5 @@
-![Build Pipeline](https://github.com/projectpolygon/hypercube/workflows/Build%20Pipeline/badge.svg)
+[![Build Pipeline](https://github.com/projectpolygon/hypercube/workflows/Build%20Pipeline/badge.svg)](https://github.com/projectpolygon/hypercube/actions)
+[![codecov](https://codecov.io/gh/projectpolygon/hypercube/branch/master/graph/badge.svg)](https://codecov.io/gh/projectpolygon/hypercube)
 
 # hypercube
 A network distributed graphics engine for an use with an array of independant machines
