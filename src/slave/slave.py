@@ -11,7 +11,7 @@ from subprocess import CalledProcessError, run
 from sys import argv, exit as sys_exit
 from time import sleep
 from zlib import decompress, error as DecompressException
-from requests import Session, cookies
+from requests import Session, cookies, exceptions as RequestExceptions
 
 # Internal imports
 import common.api.endpoints as endpoints
@@ -68,13 +68,17 @@ class HyperSlave():
         except ConnectionError:
             return None
 
+        except RequestExceptions.ConnectionError:
+            return None
+
         # allows breaking out of the loop
         except KeyboardInterrupt:
             logger.log_debug('Keyboard Interrupt detected. Exiting...')
             sys_exit(0)
 
         except Exception as error:
-            logger.log_error(error)
+            logger.log_error(
+                f'Exception of type {type(error)} occured\n{error}')
             sys_exit(1)
 
         return None
@@ -87,7 +91,7 @@ class HyperSlave():
         self.ip_addr = get_ip_addr()
         network_id = self.ip_addr.rpartition('.')[0]
         logger.log_info('Attempting master connection')
-        for i in range(0, 255):
+        for i in range(0, 256):
             hostname = network_id + "." + str(i)
             session = self.connect(hostname, master_port)
             if session is not None:
@@ -95,7 +99,7 @@ class HyperSlave():
                 logger.log_success(
                     f"Connected to {hostname}:{master_port}", "MASTER CONNECTED")
                 return hostname
-        print(f'\rMaster not at: {hostname}:{master_port}', end='')
+            print(f'\rMaster not at: {hostname}:{master_port}', end='')
         return None
 
     def set_session(self, session: Session):

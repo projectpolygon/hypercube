@@ -56,10 +56,9 @@ class HyperMaster():
             logger.log_info('Sleeping for 3 seconds. Zzz...')
             sleep(3)
 
-        job_file_names: list
-
         with open(jobfile_path, "r") as job_file:
             job_json = json_loads(job_file.read())
+            job_id = job_json.get("job_id")
             job_file_names: list = job_json.get("file_names")
 
         for file_name in job_file_names:
@@ -68,6 +67,7 @@ class HyperMaster():
                     f'{file_name} not found in job folder. Cannot continue')
                 sys_exit(1)
 
+        logger.log_success(f'Job {job_id} initialized ')
         self.jobfile_path = jobfile_path
         self.job_path = job_root_dir_path
 
