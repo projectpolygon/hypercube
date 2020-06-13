@@ -13,7 +13,6 @@ elif [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" ]]; then
     # POSIX compatibility layer and Linux environment emulation for Windows
     # Might work, not tested
     echo "This script does not currently support Windows. Please read docs on manual startup..." >&2
-    # Non standard exit code
     exit 1
 else
     echo "This script does not currently support your OS. Please read docs on manual startup..." >&2
@@ -51,7 +50,6 @@ JOB_DIR="${DIR}/job"
 # Defaults
 USE_LOCAL=FALSE
 DOCKER_IMAGE="hypercube:slave"
-PORT=5678
 
 while [[ "$1" != "" ]]; do
     case $1 in

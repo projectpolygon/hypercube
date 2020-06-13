@@ -29,8 +29,15 @@ class HyperSlave():
         self.IP_ADDR = None
         self.HOST = None
         self.PORT = PORT
+        self.JOB_PATH = None
         self.job_id = None
         self.master_info: MasterInfo = None
+
+    def init_job_root(self):
+        cwd = str(Path.cwd().resolve())
+        job_root_dir_path = cwd + '/job'
+        Path.mkdir(Path(job_root_dir_path), parents=True, exist_ok=True)
+        self.JOB_PATH = job_root_dir_path
 
     def connect(self, hostname, port):
         """
@@ -94,7 +101,8 @@ class HyperSlave():
         Create job directory based on job id
         Overwrites the directory if it exists
         """
-        path = "./job" + str(self.job_id)
+        
+        path = f'{self.JOB_PATH}/{self.job_id}'
         rmtree(path=path, ignore_errors=True)
         Path(path).mkdir(parents=True, exist_ok=False)
         return path
@@ -104,7 +112,7 @@ class HyperSlave():
         Write job bytes to file
         """
         try:
-            with open("./job" + str(self.job_id) + "/" + file_name, 'wb') as new_file:
+            with open(f'{self.JOB_PATH}/{self.job_id}/{file_name}', 'wb') as new_file:
                 new_file.write(file_data)
         except OSError as e:
             logger.log_error(e)
@@ -192,8 +200,12 @@ class HyperSlave():
 
     def start(self):
         """
-        Poll network for job server (master)
+        Initializes job root directory,
+        polls network for job server (master),
+        then requests a job from the master 
         """
+        self.init_job_root()
+
         self.HOST = None
         while self.HOST is None:
             self.HOST = self.attempt_master_connection(self.PORT)
@@ -201,6 +213,7 @@ class HyperSlave():
                 break
             logger.log_info("Retrying...")
             sleep(1)
+
         self.req_job()
 
     def run_shell_command(self, command):
