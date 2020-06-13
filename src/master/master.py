@@ -20,6 +20,7 @@ from .connection import ConnectionManager
 
 logger = Logger()
 
+
 class HyperMaster():
     """
     HyperMaster Class.
@@ -45,11 +46,12 @@ class HyperMaster():
         cwd = str(Path.cwd().resolve())
         job_root_dir_path = cwd + '/job'
         Path.mkdir(Path(job_root_dir_path), parents=True, exist_ok=True)
-        
+
         jobfile_path = f'{job_root_dir_path}/{self.jobfile_name}'
 
         while not Path(jobfile_path).exists():
-            logger.log_warn(f'{self.jobfile_name} not found. Please provide one in {job_root_dir_path}')
+            logger.log_warn(
+                f'{self.jobfile_name} not found. Please provide one in {job_root_dir_path}')
             logger.log_info('Sleeping for 3 seconds. Zzz...')
             sleep(3)
 
@@ -61,7 +63,8 @@ class HyperMaster():
 
         for file_name in job_file_names:
             if not Path(f'{job_root_dir_path}/{file_name}').exists():
-                logger.log_error(f'{file_name} not found in job folder. Cannot continue')
+                logger.log_error(
+                    f'{file_name} not found in job folder. Cannot continue')
                 exit(1)
 
         self.jobfile_path = jobfile_path
@@ -87,7 +90,8 @@ class HyperMaster():
             """
             conn_id = request.cookies.get('id')
 
-            logger.log_info(f'Job request from {conn_id},\nSaving connection...')
+            logger.log_info(
+                f'Job request from {conn_id},\nSaving connection...')
             self.conn_manager.add_connection(conn_id)
 
             with open(self.jobfile_path, "r") as job_file:
@@ -103,7 +107,8 @@ class HyperMaster():
             """
             try:
                 with open(f'{self.job_path}/{file_name}', "rb") as file:
-                    logger.log_info(f'Sending {file_name} as part of job {job_id}')
+                    logger.log_info(
+                        f'Sending {file_name} as part of job {job_id}')
                     file_data = file.read()
                     compressed_data = compress(file_data)
                     return send_file(

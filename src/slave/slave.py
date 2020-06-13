@@ -38,6 +38,10 @@ class HyperSlave():
         self.master_info: MasterInfo = None
 
     def init_job_root(self):
+        """
+        Initializes the job root directory
+        """
+
         cwd = str(Path.cwd().resolve())
         job_root_dir_path = cwd + '/job'
         Path.mkdir(Path(job_root_dir_path), parents=True, exist_ok=True)
@@ -79,6 +83,7 @@ class HyperSlave():
         """
         Attempt to find and connect to the master node
         """
+
         self.ip_addr = get_ip_addr()
         network_id = self.ip_addr.rpartition('.')[0]
         logger.log_info('Attempting master connection')
@@ -87,7 +92,8 @@ class HyperSlave():
             session = self.connect(hostname, master_port)
             if session is not None:
                 self.set_session(session)
-                logger.log_success(f"Connected to {hostname}:{master_port}", "MASTER CONNECTED")
+                logger.log_success(
+                    f"Connected to {hostname}:{master_port}", "MASTER CONNECTED")
                 return hostname
         print(f'\rMaster not at: {hostname}:{master_port}', end='')
         return None
@@ -97,6 +103,7 @@ class HyperSlave():
         Setup the session through the use of a cookie
         Cookie is created with a unique session id
         """
+
         session_id = self.ip_addr + '-' + str(random() * random() * 123456789)
         cookie = cookies.create_cookie('id', session_id)
         session.cookies.set_cookie(cookie)
@@ -107,7 +114,7 @@ class HyperSlave():
         Create job directory based on job id
         Overwrites the directory if it exists
         """
-        
+
         path = f'{self.job_path}/{self.job_id}'
         rmtree(path=path, ignore_errors=True)
         Path(path).mkdir(parents=True, exist_ok=False)
@@ -133,11 +140,10 @@ class HyperSlave():
         logger.log_info(f'requesting file: {file_name}')
         resp = self.session.get(
             f'http://{self.host}:{self.port}/{endpoints.FILE}/{self.job_id}/{file_name}'
-            )
+        )
         if not resp:
             logger.log_error(f'File: {file_name} was not returned')
             return False
-
 
         logger.log_info(f'File: {file_name} recieved. Saving now...')
 
@@ -199,10 +205,12 @@ class HyperSlave():
             if resp.status_code == 200:
                 return True
 
-            logger.log_warn(f"Connection is not healthy ({self.host}:{self.port})")
+            logger.log_warn(
+                f"Connection is not healthy ({self.host}:{self.port})")
 
         except ConnectionError:
-            logger.log_error(f"Master cannot be reached. ({self.host}:{self.port})")
+            logger.log_error(
+                f"Master cannot be reached. ({self.host}:{self.port})")
 
         except Exception as error:
             logger.log_error(error)
@@ -227,6 +235,7 @@ class HyperSlave():
 
         self.req_job()
 
+
 def run_shell_command(command):
     """
     Execute a shell command outputing stdout/stderr to a result.txt file.
@@ -236,7 +245,8 @@ def run_shell_command(command):
 
     try:
         with open('ApplicationResultLog.txt', "w") as result_file:
-            output = run(args, stdout=result_file, stderr=result_file, text=True, check=True)
+            output = run(args, stdout=result_file,
+                         stderr=result_file, text=True, check=True)
 
         return output.returncode
 
