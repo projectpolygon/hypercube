@@ -99,7 +99,7 @@ class HyperSlave():
                 logger.log_success(
                     f"Connected to {hostname}:{master_port}", "MASTER CONNECTED")
                 return hostname
-            print(f'\rMaster not at: {hostname}:{master_port}', end='')
+            logger.print_sameline(f'Master not at: {hostname}:{master_port}')
         return None
 
     def set_session(self, session: Session):
