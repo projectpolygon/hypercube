@@ -4,8 +4,11 @@ Implemented fuctionality to run a master node for a distributed workload
 
 # External imports
 from io import BytesIO
-from json import loads
-from os import environ, makedirs
+from json import loads as json_loads
+from os import makedirs
+from pathlib import Path
+from sys import exit as sys_exit
+from time import sleep
 from zlib import compress, error as CompressException
 from flask import Flask, Response, jsonify, request, send_file
 
@@ -18,18 +21,55 @@ from .connection import ConnectionManager
 
 logger = Logger()
 
+
 class HyperMaster():
     """
-    When the master is started, this class should be what the user application
-    can import to begin using the features of the system on the master itself
+    HyperMaster Class.
     """
+    jobfile_name: str = None
+    jobfile_path: str = None
+    job_path: str = None
 
-    def __init__(self, HOST="0.0.0.0", PORT=5678):
-        self.host = HOST
-        self.port = PORT
+    def __init__(self, host="0.0.0.0", port=5678, jobfile_name='jobfile'):
+        self.host = host
+        self.port = port
+        self.jobfile_name = jobfile_name
         self.test_config = None
         self.task_queue = []
         self.conn_manager: ConnectionManager = ConnectionManager()
+
+    def init_job(self):
+        """
+        Initializes the job for the master.
+        Ensures jobfile is readable and job files exist
+        """
+
+        cwd = str(Path.cwd().resolve())
+        job_root_dir_path = cwd + '/job'
+        Path.mkdir(Path(job_root_dir_path), parents=True, exist_ok=True)
+
+        jobfile_path = f'{job_root_dir_path}/{self.jobfile_name}'
+
+        while not Path(jobfile_path).exists():
+            logger.log_warn(
+                f'{self.jobfile_name} not found. Please provide one in {job_root_dir_path}')
+            logger.log_info('Sleeping for 3 seconds. Zzz...')
+            sleep(3)
+
+        with open(jobfile_path, "r") as job_file:
+            job_json = json_loads(job_file.read())
+            job_id = job_json.get("job_id")
+            job_file_names: list = job_json.get("file_names")
+
+        for file_name in job_file_names:
+            if not Path(f'{job_root_dir_path}/{file_name}').exists():
+                logger.log_error(
+                    f'{file_name} not found in job folder. Cannot continue')
+                sys_exit(1)
+
+        logger.log_success(f'Job {job_id} initialized ')
+        self.jobfile_path = jobfile_path
+        self.job_path = job_root_dir_path
 
     def start_server(self):
         """
@@ -38,7 +78,7 @@ class HyperMaster():
         app = create_app(self)
         app.run(host=self.host, port=self.port, debug=True)
 
-    def create_routes(self, app, job_file_name):
+    def create_routes(self, app):
         """
         Creates the required routes
         """
@@ -51,12 +91,13 @@ class HyperMaster():
             """
             conn_id = request.cookies.get('id')
 
-            logger.log_info(f'Job request from {conn_id},\nSaving connection...')
+            logger.log_info(
+                f'Job request from {conn_id},\nSaving connection...')
             self.conn_manager.add_connection(conn_id)
 
-            with open(job_file_name, "r") as job_file:
+            with open(self.jobfile_path, "r") as job_file:
                 # read and parse the JSON
-                job_json = loads(job_file.read())
+                job_json = json_loads(job_file.read())
                 return jsonify(job_json)
 
         @app.route(f'/{endpoints.FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
@@ -66,8 +107,9 @@ class HyperMaster():
             Endpoint to handle file request from the slave
             """
             try:
-                with open(file_name, "rb") as file:
-                    logger.log_info(f'Sending {file_name} as part of job {job_id}')
+                with open(f'{self.job_path}/{file_name}', "rb") as file:
+                    logger.log_info(
+                        f'Sending {file_name} as part of job {job_id}')
                     file_data = file.read()
                     compressed_data = compress(file_data)
                     return send_file(
@@ -184,13 +226,7 @@ def create_app(hyper_master: HyperMaster):
         # load the test config if passed in
         app.config.from_mapping(hyper_master.test_config)
 
-    job_file_name = ""
-    if "HYPER_JOBFILE_NAME" in environ:
-        logger.log_info('Using environment varible to set jobfile')
-        job_file_name = environ.get("HYPER_JOBFILE_NAME")
-    else:
-        logger.log_info('Using provided jobfile')
-        job_file_name = "jobfile"
+    hyper_master.init_job()
 
     # TODO: optional step
     # ensure the instance folder exists so configurations can be added
@@ -200,7 +236,7 @@ def create_app(hyper_master: HyperMaster):
         pass
 
     # create the endpoints for job handling
-    hyper_master.create_routes(app, job_file_name)
+    hyper_master.create_routes(app)
 
     return app
 

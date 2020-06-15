@@ -3,6 +3,7 @@ Implementation of logging capabilities to be used by the master and slave
 """
 
 from time import strftime
+from enum import Enum
 
 SET_PURPLE = '\033[95m'
 SET_BLUE = '\033[94m'
@@ -15,11 +16,23 @@ SET_UNDERLINE = '\033[4m'
 
 SEPARATER = '========================================================'
 
+class LogLevel(Enum):
+    TRACE = 0
+    DEBUG = 1
+    INFO = 2
+    WARN = 3
+    ERROR = 4
 
 class Logger:
     """
     Provides functionality to log errors, warnings, info, success, and debug
     """
+    log_level: LogLevel
+
+    def __init__(self, log_level: LogLevel = LogLevel.TRACE):
+        self.log_level = log_level
+        # TODO: log_*() functions check log level before printing
+
     def log_error(self, message: str, end='\n'):
         """
         Logs error messages
@@ -28,11 +41,11 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_ERROR}ERROR', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}\n')
+        self.print_bold(f'{SEPARATER}')
 
     def log_warn(self, message: str, end='\n'):
         """
@@ -42,11 +55,11 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_WARN}WARNING', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}\n')
+        self.print_bold(f'{SEPARATER}')
 
     def log_info(self, message: str, end='\n'):
         """
@@ -56,11 +69,11 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_BLUE}INFO', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}\n')
+        self.print_bold(f'{SEPARATER}')
 
     def log_success(self, message: str, header: str = 'SUCCESS', end='\n'):
         """
@@ -71,11 +84,11 @@ class Logger:
             header: str (optional) - string for the message header tag. Defaults to 'Success'
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_GREEN}{header}', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}\n')
+        self.print_bold(f'{SEPARATER}')
 
     def log_debug(self, message: str, end='\n'):
         """
@@ -85,11 +98,11 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_PURPLE}DEBUG', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}\n')
+        self.print_bold(f'{SEPARATER}')
 
     def print_datetime(self, end='\n'):
         """
@@ -101,6 +114,14 @@ class Logger:
         """
         self.print_bold(
             f'[{strftime("%d %b %Y - %H:%M:%S")}]', end=end)
+
+    @staticmethod
+    def print_sameline(message: str):
+        """
+        **Meant to be called repeatedly**
+        ie) in a loop
+        """
+        print(f'\r{message}', end='')
 
     @staticmethod
     def print_bold(message: str, end='\n'):
