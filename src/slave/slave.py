@@ -65,10 +65,7 @@ class HyperSlave():
                 except ValueError:
                     logger.log_error('Master provided no info')
 
-        except ConnectionError:
-            return None
-
-        except RequestExceptions.ConnectionError:
+        except (ConnectionError, RequestExceptions.ConnectionError):
             return None
 
         # allows breaking out of the loop
