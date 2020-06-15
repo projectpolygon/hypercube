@@ -16,6 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: pylint
+        uses: actions/setup-python@v2
+        with:
+          python-version: [3.8]
+
+        run: |
+          python -m pip install --upgrade pip3
+          pip3 install pylint
+          pylint --rcfile=pylintrc src/*/*.py
+
       - name: Run Master unit tests
         run: docker build -f "master.Dockerfile" -t master/unit_tests --target test-env .
 
