@@ -17,6 +17,9 @@ SET_UNDERLINE = '\033[4m'
 SEPARATER = '========================================================'
 
 class LogLevel(Enum):
+    """
+    Enumerated log levels
+    """
     TRACE = 0
     DEBUG = 1
     INFO = 2
