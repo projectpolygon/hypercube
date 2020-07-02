@@ -20,11 +20,11 @@ class LogLevel(Enum):
     """
     Enumerated log levels
     """
-    TRACE = 0
-    DEBUG = 1
+    TRACE = 4
+    DEBUG = 3
     INFO = 2
-    WARN = 3
-    ERROR = 4
+    WARN = 1
+    ERROR = 0
 
 class Logger:
     """
@@ -44,6 +44,8 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
+        if self.log_level.value < LogLevel.ERROR.value:
+            return
         self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_ERROR}ERROR', end=' ')
         self.print_datetime(end='')
@@ -58,6 +60,8 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
+        if self.log_level.value < LogLevel.WARN.value:
+            return
         self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_WARN}WARNING', end=' ')
         self.print_datetime(end='')
@@ -72,6 +76,8 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
+        if self.log_level.value < LogLevel.INFO.value:
+            return
         self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_BLUE}INFO', end=' ')
         self.print_datetime(end='')
@@ -87,6 +93,8 @@ class Logger:
             header: str (optional) - string for the message header tag. Defaults to 'Success'
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
+        if self.log_level.value < LogLevel.INFO.value:
+            return
         self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_GREEN}{header}', end=' ')
         self.print_datetime(end='')
@@ -101,8 +109,26 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
+        if self.log_level.value < LogLevel.DEBUG.value:
+            return
         self.print_bold(f'\n{SEPARATER}')
         self.print_bold(f'{SET_PURPLE}DEBUG', end=' ')
+        self.print_datetime(end='')
+        print(f':\n{message}', end=end)
+        self.print_bold(f'{SEPARATER}')
+
+    def log_trace(self, message: str, end='\n'):
+        """
+        Logs trace messages
+
+        Params:
+            message: str - the message to log
+            end: str (optional) - string appended to the end of the message. Defaults to newline
+        """
+        if self.log_level.value < LogLevel.TRACE.value:
+            return
+        self.print_bold(f'\n{SEPARATER}')
+        self.print_bold('TRACE', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
         self.print_bold(f'{SEPARATER}')
@@ -155,10 +181,13 @@ class Logger:
 
 if __name__ == "__main__":
 
-    logger = Logger()
+    logger = Logger(LogLevel.DEBUG)
+    trace_logger = Logger()
     logger.test_colours()
     logger.log_error('error msg')
     logger.log_warn('warn msg')
     logger.log_info('info blue msg')
     logger.log_success('success msg')
-    logger.log_debug('test')
+    logger.log_debug('debug msg')
+    logger.log_trace('shouldn\'t print unless log level set to TRACE')
+    trace_logger.log_trace('trace msg')
