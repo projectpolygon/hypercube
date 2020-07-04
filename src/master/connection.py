@@ -34,7 +34,7 @@ class Connection:
         """
         Needed to make an instance of this object comparable
         """
-        return hash((self.connection_id))
+        return hash(self.connection_id)
 
     def __eq__(self, other):
         """
@@ -51,13 +51,14 @@ class Connection:
         if self.is_alive():
             self.timer.cancel()
             self.timer = Timer(self.timeout_secs, self.timeout)
+            self.timer.daemon = True
             self.timer.start()
         else:
             raise ConnectionDead
 
     def timeout(self):
         """
-        Called when the set ammount of timeout seconds has been reached
+        Called when the set amount of timeout seconds has been reached
         without a reset. This sets the dead flag of the connection
         """
         logger.log_warn(f'Connection [{self.connection_id}]: timed out')

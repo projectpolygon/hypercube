@@ -18,21 +18,23 @@ import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
 from common.logging import Logger
 from common.networking import get_ip_addr
+from .heartbeat import Heartbeat
 
 logger = Logger()
 
 
-class HyperSlave():
+class HyperSlave:
     """
     When the slave is started, this class should be what the user application
     can import to begin using the features of the system on the slave itself
     """
 
-    def __init__(self, PORT=5678):
+    def __init__(self, port=5678):
+        self.heartbeat = None
         self.session: Session = None
         self.ip_addr = None
         self.host = None
-        self.port = PORT
+        self.port = port
         self.job_id = None
         self.job_path = None
         self.master_info: MasterInfo = None
@@ -189,34 +191,8 @@ class HyperSlave():
             # TODO handle the rest of the job
             # TASK_GET
             # TASK_DATA
-
-            # Send Heartbeat
-            self.send_heartbeat()
             sleep(1)
             continue
-
-    def send_heartbeat(self):
-        """
-        Send heartbeat to the master to keep its connection with master
-        """
-        try:
-            resp = self.session.get(
-                url=f'http://{self.host}:{self.port}/{endpoints.HEARTBEAT}', timeout=1)
-
-            if resp.status_code == 200:
-                return True
-
-            logger.log_warn(
-                f"Connection is not healthy ({self.host}:{self.port})")
-
-        except ConnectionError:
-            logger.log_error(
-                f"Master cannot be reached. ({self.host}:{self.port})")
-
-        except Exception as error:
-            logger.log_error(error)
-
-        return False
 
     def start(self):
         """
@@ -233,7 +209,8 @@ class HyperSlave():
                 break
             logger.log_info("Retrying...")
             sleep(1)
-
+        self.heartbeat = Heartbeat(session=self.session, url=f'http://{self.host}:{self.port}/{endpoints.HEARTBEAT}')
+        self.heartbeat.start_beating()
         self.req_job()
 
 
