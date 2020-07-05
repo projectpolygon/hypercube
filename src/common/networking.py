@@ -1,9 +1,9 @@
-
 """
-common implementation for networking functions
+implementation for common networking functions
 """
 
-from socket import AF_INET, SOCK_DGRAM, error as socket_error, socket
+from socket import AF_INET, SOCK_DGRAM, socket, error as SocketError
+
 
 def get_ip_addr():
     """
@@ -14,8 +14,8 @@ def get_ip_addr():
         # doesn't matter what to connect to, just used to get socket
         sock.connect(('8.8.8.8', 80))
         ip = sock.getsockname()[0]
-    except socket_error:
-        # if socket failed to get sockname, use localhost
+    except SocketError:
+        # if socket failed to get socket name, use localhost
         ip = '127.0.0.1'
     finally:
         sock.close()
