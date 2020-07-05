@@ -61,7 +61,7 @@ class HyperSlave:
             # 200 okay returned, master discovery succeeded
             if resp.status_code == 200:
                 try:
-                    self.master_info = MasterInfo(resp.json())
+                    self.master_info = resp.json()
                     return session
 
                 except ValueError:
@@ -131,7 +131,7 @@ class HyperSlave:
             with open(f'{self.job_path}/{self.job_id}/{file_name}', 'wb') as new_file:
                 new_file.write(file_data)
         except OSError as error:
-            logger.log_error(error)
+            logger.log_error(f'{error}')
             return
         logger.log_success('Processed data saved')
 

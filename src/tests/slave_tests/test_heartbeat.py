@@ -11,7 +11,6 @@ from slave.heartbeat import Heartbeat
 
 
 class TestHeartbeat:
-    mock_session: Session
     mock_url = 'https://mock_url.ca'
 
     def setup_method(self, method):
