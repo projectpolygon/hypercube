@@ -1,5 +1,5 @@
 """
-Implemented fuctionality to run a master node for a distributed workload
+Implemented functionality to run a master node for a distributed workload
 """
 
 # External imports
@@ -22,13 +22,10 @@ from .connection import ConnectionManager
 logger = Logger()
 
 
-class HyperMaster():
+class HyperMaster:
     """
     HyperMaster Class.
     """
-    jobfile_name: str = None
-    jobfile_path: str = None
-    job_path: str = None
 
     def __init__(self, host="0.0.0.0", port=5678, jobfile_name='jobfile'):
         self.host = host
@@ -37,6 +34,8 @@ class HyperMaster():
         self.test_config = None
         self.task_queue = []
         self.conn_manager: ConnectionManager = ConnectionManager()
+        self.jobfile_path: str = None
+        self.job_path: str = None
 
     def init_job(self):
         """
