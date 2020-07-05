@@ -3,7 +3,7 @@ from unittest.mock import patch, mock_open, MagicMock
 from requests import Response
 from random import random
 from common.api import endpoints
-from slave.slave import HyperSlave, Path, Session, decompress
+from slave.slave import HyperSlave, Path, Session, Heartbeat, DecompressException
 
 
 class TestSlave:
@@ -28,6 +28,7 @@ class TestSlave:
         assert self.slave.job_id is None
         assert self.slave.job_path is None
         assert self.slave.master_info is None
+        assert self.slave.running is False
 
     @patch('slave.slave.Path')
     def test_init_job_root(self, mock_path: Path):
@@ -187,6 +188,99 @@ class TestSlave:
         self.slave.job_id = job_id
         self.slave.save_processed_data = MagicMock()
         # Act
-        self.slave.get_file(file_name)
+        success = self.slave.get_file(file_name)
         # Assert
         mock_session.get.assert_called_with(expected_endpoint)
+        assert success
+
+    @patch('slave.slave.decompress')
+    @patch('requests.Response', spec=Response)
+    @patch('slave.slave.Session', spec=Session)
+    def test_get_file_no_resp(self, mock_session: Session, mock_resp: Response, mock_decompress):
+        # Arrange
+        mock_session.return_value = mock_session
+        mock_resp = False
+        mock_session.get.return_value = mock_resp
+        self.slave.session = mock_session
+        # Act
+        success = self.slave.get_file("file_name")
+        # Assert
+        assert not success
+
+    @patch('slave.slave.decompress')
+    @patch('slave.slave.Session', spec=Session)
+    def test_get_file_decompress_exception(self, mock_session: Session, mock_decompress):
+        # Arrange
+        mock_session.return_value = mock_session
+        mock_session.get.return_value = MagicMock()
+        self.slave.session = mock_session
+        mock_decompress.side_effect = DecompressException
+        # Act
+        success = self.slave.get_file("file_name")
+        # Assert
+        assert not success
+
+    @patch('requests.Response', spec=Response)
+    @patch('slave.slave.Session', spec=Session)
+    def test_req_job_endpoint(self, mock_session: Session, mock_resp: Response):
+        # Arrange
+        mock_session.return_value = mock_session
+        mock_session.get.return_value = False
+        self.slave.host = "hostname"
+        self.slave.port = "port"
+        self.slave.session = mock_session
+        expected_endpoint = f'http://{self.slave.host}:{self.slave.port}/{endpoints.JOB}'
+        # Act
+        self.slave.req_job()
+        # Assert
+        mock_session.get.assert_called_with(expected_endpoint, timeout=5)
+
+    @patch('requests.Response', spec=Response)
+    @patch('slave.slave.Session', spec=Session)
+    def test_req_job(self, mock_session: Session, mock_resp: Response):
+        # Arrange
+        mock_resp.json.return_value = {"job_id": 1, "file_names": ["file_name"]}
+        mock_session.return_value = mock_session
+        mock_session.get.return_value = mock_resp
+        self.slave.create_job_dir = MagicMock()
+        self.slave.get_file = MagicMock()
+        self.slave.session = mock_session
+        # Act
+        self.slave.req_job()
+        # Assert
+        self.slave.get_file.assert_called_with('file_name')
+
+    @patch('requests.Response', spec=Response)
+    @patch('slave.slave.Session', spec=Session)
+    def test_req_job_value_error(self, mock_session: Session, mock_resp: Response):
+        # Arrange
+        mock_session.return_value = mock_session
+        mock_resp.json.side_effect = ValueError
+        mock_session.get.return_value = mock_resp
+        self.slave.session = mock_session
+        # Act & Assert
+        with pytest.raises(Exception):
+            assert self.slave.req_job()
+
+    @patch('requests.Response', spec=Response)
+    @patch('slave.slave.Session', spec=Session)
+    def test_req_job_generic_exception(self, mock_session: Session, mock_resp: Response):
+        # Arrange
+        mock_session.return_value = mock_session
+        mock_resp.json.side_effect = Exception("Mock Error. Ignore Me!")
+        mock_session.get.return_value = mock_resp
+        self.slave.session = mock_session
+        # Act & Assert
+        with pytest.raises(Exception):
+            assert self.slave.req_job()
+
+    def test_start(self):
+        # Arrange
+        self.slave.init_job_root = MagicMock()
+        self.slave.attempt_master_connection = MagicMock(return_value="hostname")
+        self.slave.req_job = MagicMock()
+        expected_url = f'http://hostname:{self.slave.port}/{endpoints.HEARTBEAT}'
+        # Act
+        self.slave.start()
+        # Assert
+        assert self.slave.heartbeat.url == expected_url

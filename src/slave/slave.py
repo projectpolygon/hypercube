@@ -38,6 +38,7 @@ class HyperSlave:
         self.job_id = None
         self.job_path = None
         self.master_info: MasterInfo = None
+        self.running = False
 
     def init_job_root(self):
         """
@@ -176,8 +177,13 @@ class HyperSlave:
             job_json = resp.json()
             self.job_id: int = job_json.get("job_id")
             job_file_names: list = job_json.get("file_names")
-        except Exception:
+
+        except ValueError:
             logger.log_error('Job data JSON not received. Cannot continue')
+            return
+
+        except Exception as error:
+            logger.log_error(f'{error}')
             return
 
         # create a working directory
@@ -187,7 +193,7 @@ class HyperSlave:
         for file_name in job_file_names:
             self.get_file(file_name)
 
-        while True:
+        while self.running:
             # TODO handle the rest of the job
             # TASK_GET
             # TASK_DATA
