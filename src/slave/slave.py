@@ -149,12 +149,12 @@ class HyperSlave:
             logger.log_error(f'File: {file_name} was not returned')
             return False
 
-        logger.log_info(f'File: {file_name} recieved. Saving now...')
+        logger.log_info(f'File: {file_name} received. Saving now...')
 
         try:
             file_data = decompress(resp.content)
         except DecompressException as error:
-            logger.log_error(error)
+            logger.log_error(f'{error}')
             return False
 
         self.save_processed_data(file_name, file_data)
