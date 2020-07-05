@@ -3,8 +3,8 @@ Heartbeat thread
 """
 
 # External imports
-from requests import Session, exceptions as RequestExceptions
 from threading import Timer
+from requests import Session, exceptions as RequestExceptions
 
 # Internal imports
 from common.logging import Logger
@@ -13,7 +13,10 @@ logger = Logger()
 
 
 class Heartbeat:
-
+    """
+    Heartbeat Class.
+    Handles sending heartbeat messages periodically
+    """
     def __init__(self, session: Session, url, interval_secs: float = 2.0, retry_attempts=5):
         self.session = session
         self.url = url
@@ -23,11 +26,17 @@ class Heartbeat:
         self.retry_attempts = retry_attempts
 
     def start_beating(self):
+        """
+        Initializes and starts the timer as a daemon thread
+        """
         self.timer: Timer = Timer(self.interval, self.send_beat)
         self.timer.daemon = True
         self.timer.start()
 
     def reset_timer(self):
+        """
+        Resets the timer by cancelling and starting it
+        """
         self.timer.cancel()
         self.start_beating()
 
@@ -64,5 +73,8 @@ class Heartbeat:
             self.reset_timer()
 
     def stop_beating(self):
+        """
+        Ends the timer by cancelling it
+        """
         logger.log_info("Heartbeat stopped")
         self.timer.cancel()

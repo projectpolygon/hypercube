@@ -209,7 +209,8 @@ class HyperSlave:
                 break
             logger.log_info("Retrying...")
             sleep(1)
-        self.heartbeat = Heartbeat(session=self.session, url=f'http://{self.host}:{self.port}/{endpoints.HEARTBEAT}')
+        self.heartbeat = Heartbeat(
+            session=self.session, url=f'http://{self.host}:{self.port}/{endpoints.HEARTBEAT}')
         self.heartbeat.start_beating()
         self.req_job()
 

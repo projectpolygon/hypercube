@@ -59,7 +59,7 @@ class TestHeartbeat:
         self.heartbeat = Heartbeat(self.mock_session, self.mock_url, interval_secs=0.0, retry_attempts=0)
         # Act
         self.heartbeat.start_beating()
-        sleep(0.00005)
+        sleep(0.05)
         # Assert
         assert (self.heartbeat.fails == 1)
         assert (not self.heartbeat.timer.is_alive())
