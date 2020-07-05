@@ -193,14 +193,11 @@ class TestSlave:
         mock_session.get.assert_called_with(expected_endpoint)
         assert success
 
-    @patch('slave.slave.decompress')
-    @patch('requests.Response', spec=Response)
     @patch('slave.slave.Session', spec=Session)
-    def test_get_file_no_resp(self, mock_session: Session, mock_resp: Response, mock_decompress):
+    def test_get_file_no_resp(self, mock_session: Session):
         # Arrange
         mock_session.return_value = mock_session
-        mock_resp = False
-        mock_session.get.return_value = mock_resp
+        mock_session.get.return_value = False
         self.slave.session = mock_session
         # Act
         success = self.slave.get_file("file_name")

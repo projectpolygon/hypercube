@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from common.networking import *
+from common.networking import SocketError, socket, get_ip_addr
 
 
 class TestGetIpAdd:
