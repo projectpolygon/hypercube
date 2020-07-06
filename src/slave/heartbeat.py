@@ -63,7 +63,7 @@ class Heartbeat:
             self.fails += 1
 
         except Exception as error:
-            logger.log_error(error)
+            logger.log_error(f'Unknown Error: {error}')
             self.fails += 1
 
         if self.fails >= self.retry_attempts:

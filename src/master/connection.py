@@ -41,7 +41,7 @@ class Connection:
         Needed to make an instance of this object comparable
         """
         if not isinstance(other, type(self)):
-            return NotImplemented
+            raise ValueError(f"Object is of type {type(other)}. Expected type {type(self)}")
         return self.connection_id == other.connection_id
 
     def reset_timer(self):

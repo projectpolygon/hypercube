@@ -38,6 +38,7 @@ class HyperSlave:
         self.job_id = None
         self.job_path = None
         self.master_info: MasterInfo = None
+        self.running = False
 
     def init_job_root(self):
         """
@@ -61,7 +62,7 @@ class HyperSlave:
             # 200 okay returned, master discovery succeeded
             if resp.status_code == 200:
                 try:
-                    self.master_info = MasterInfo(resp.json())
+                    self.master_info = resp.json()
                     return session
 
                 except ValueError:
@@ -131,7 +132,7 @@ class HyperSlave:
             with open(f'{self.job_path}/{self.job_id}/{file_name}', 'wb') as new_file:
                 new_file.write(file_data)
         except OSError as error:
-            logger.log_error(error)
+            logger.log_error(f'{error}')
             return
         logger.log_success('Processed data saved')
 
@@ -148,12 +149,12 @@ class HyperSlave:
             logger.log_error(f'File: {file_name} was not returned')
             return False
 
-        logger.log_info(f'File: {file_name} recieved. Saving now...')
+        logger.log_info(f'File: {file_name} received. Saving now...')
 
         try:
             file_data = decompress(resp.content)
         except DecompressException as error:
-            logger.log_error(error)
+            logger.log_error(f'{error}')
             return False
 
         self.save_processed_data(file_name, file_data)
@@ -176,8 +177,13 @@ class HyperSlave:
             job_json = resp.json()
             self.job_id: int = job_json.get("job_id")
             job_file_names: list = job_json.get("file_names")
-        except Exception:
+
+        except ValueError:
             logger.log_error('Job data JSON not received. Cannot continue')
+            return
+
+        except Exception as error:
+            logger.log_error(f'{error}')
             return
 
         # create a working directory
@@ -187,7 +193,7 @@ class HyperSlave:
         for file_name in job_file_names:
             self.get_file(file_name)
 
-        while True:
+        while self.running:
             # TODO handle the rest of the job
             # TASK_GET
             # TASK_DATA

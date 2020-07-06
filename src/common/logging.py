@@ -14,7 +14,8 @@ SET_END = '\033[0m'
 SET_BOLD = '\033[1m'
 SET_UNDERLINE = '\033[4m'
 
-SEPARATER = '========================================================'
+SEPARATOR = '========================================================'
+
 
 class LogLevel(Enum):
     """
@@ -26,14 +27,14 @@ class LogLevel(Enum):
     WARN = 1
     ERROR = 0
 
+
 class Logger:
     """
     Provides functionality to log errors, warnings, info, success, and debug
     """
-    log_level: LogLevel
 
     def __init__(self, log_level: LogLevel = LogLevel.TRACE):
-        self.log_level = log_level
+        self.log_level = log_level.value
         # TODO: log_*() functions check log level before printing
 
     def log_error(self, message: str, end='\n'):
@@ -44,13 +45,11 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        if self.log_level.value < LogLevel.ERROR.value:
-            return
-        self.print_bold(f'\n{SEPARATER}')
+        self.print_bold(f'\n{SEPARATOR}')
         self.print_bold(f'{SET_ERROR}ERROR', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'{SEPARATOR}')
 
     def log_warn(self, message: str, end='\n'):
         """
@@ -60,13 +59,13 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        if self.log_level.value < LogLevel.WARN.value:
+        if self.log_level < LogLevel.WARN.value:
             return
-        self.print_bold(f'\n{SEPARATER}')
+        self.print_bold(f'\n{SEPARATOR}')
         self.print_bold(f'{SET_WARN}WARNING', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'{SEPARATOR}')
 
     def log_info(self, message: str, end='\n'):
         """
@@ -76,13 +75,13 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        if self.log_level.value < LogLevel.INFO.value:
+        if self.log_level < LogLevel.INFO.value:
             return
-        self.print_bold(f'\n{SEPARATER}')
+        self.print_bold(f'\n{SEPARATOR}')
         self.print_bold(f'{SET_BLUE}INFO', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'{SEPARATOR}')
 
     def log_success(self, message: str, header: str = 'SUCCESS', end='\n'):
         """
@@ -93,13 +92,13 @@ class Logger:
             header: str (optional) - string for the message header tag. Defaults to 'Success'
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        if self.log_level.value < LogLevel.INFO.value:
+        if self.log_level < LogLevel.INFO.value:
             return
-        self.print_bold(f'\n{SEPARATER}')
+        self.print_bold(f'\n{SEPARATOR}')
         self.print_bold(f'{SET_GREEN}{header}', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'{SEPARATOR}')
 
     def log_debug(self, message: str, end='\n'):
         """
@@ -109,13 +108,13 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        if self.log_level.value < LogLevel.DEBUG.value:
+        if self.log_level < LogLevel.DEBUG.value:
             return
-        self.print_bold(f'\n{SEPARATER}')
+        self.print_bold(f'\n{SEPARATOR}')
         self.print_bold(f'{SET_PURPLE}DEBUG', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'{SEPARATOR}')
 
     def log_trace(self, message: str, end='\n'):
         """
@@ -125,13 +124,13 @@ class Logger:
             message: str - the message to log
             end: str (optional) - string appended to the end of the message. Defaults to newline
         """
-        if self.log_level.value < LogLevel.TRACE.value:
+        if self.log_level < LogLevel.TRACE.value:
             return
-        self.print_bold(f'\n{SEPARATER}')
+        self.print_bold(f'\n{SEPARATOR}')
         self.print_bold('TRACE', end=' ')
         self.print_datetime(end='')
         print(f':\n{message}', end=end)
-        self.print_bold(f'{SEPARATER}')
+        self.print_bold(f'{SEPARATOR}')
 
     def print_datetime(self, end='\n'):
         """
@@ -164,26 +163,10 @@ class Logger:
         """
         print(f'{SET_BOLD}{message}{SET_END}', end=end)
 
-    @staticmethod
-    def test_colours():
-        """
-        **Meant for internal use**
-        """
-
-        print(f'{SET_PURPLE}PURPLE{SET_END} ', end='')
-        print(f'{SET_BLUE}BLUE{SET_END} ', end='')
-        print(f'{SET_GREEN}GREEN{SET_END} ', end='')
-        print(f'{SET_WARN}WARN{SET_END} ', end='')
-        print(f'{SET_ERROR}ERROR{SET_END} ', end='')
-        print(f'{SET_BOLD}BOLD{SET_END} ', end='')
-        print(f'{SET_UNDERLINE}UNDERLINE{SET_END}')
-
 
 if __name__ == "__main__":
-
     logger = Logger(LogLevel.DEBUG)
     trace_logger = Logger()
-    logger.test_colours()
     logger.log_error('error msg')
     logger.log_warn('warn msg')
     logger.log_info('info blue msg')
