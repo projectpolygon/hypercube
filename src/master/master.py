@@ -53,7 +53,7 @@ class HyperMaster:
     def init_job(self, job: JobInfo):
         """
         Initializes the job for the master.
-        Ensures jobfile is readable and job files exist
+        Ensures job files exist
         """
 
         for file_name in job.file_names:
