@@ -32,9 +32,11 @@ class TaskManager:
     """
     Manages Tasks
     """
-    available_tasks: SimpleQueue = SimpleQueue()
-    in_progress: List[ConnectedTask] = []
-    finished_tasks: SimpleQueue = SimpleQueue()
+
+    def __init__(self):
+        self.available_tasks: SimpleQueue = SimpleQueue()
+        self.in_progress: List[ConnectedTask] = []
+        self.finished_tasks: SimpleQueue = SimpleQueue()
 
     def connect_available_task(self, connection_id: str) -> Task:
         """

@@ -143,7 +143,7 @@ class TestTaskManager:
         # Assert
         assert self.task_manager.finished_tasks.qsize() == 3
 
-    def test_tasks_finished(self):
+    def test_flush_finished_tasks(self):
         # Arrange
         tasks = [Task(1, "", None), Task(2, "", None), Task(3, "", None)]
         finished_tasks = tasks.copy()
