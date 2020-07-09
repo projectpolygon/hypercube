@@ -20,19 +20,29 @@ class NoMoreAvailableTasks(Exception):
 
 
 class ConnectedTask:
+    """
+    A ConnectedTask is a task that is associated with a connected slave
+    """
     def __init__(self, task: Task, connection_id: str):
         self.task = task
         self.connection_id = connection_id
 
 
 class TaskManager:
+    """
+    Manages Tasks
+    """
     available_tasks: SimpleQueue = SimpleQueue()
-    in_progress: List[ConnectedTask]
+    in_progress: List[ConnectedTask] = []
     finished_tasks: SimpleQueue = SimpleQueue()
 
-    def connect_available_task(self, connection_id: str):
+    def connect_available_task(self, connection_id: str) -> Task:
+        """
+        Connects a task with a connection id associated with the connected slave
+        Returns the task
+        """
         try:
-            task: Task = self.available_tasks.get()
+            task: Task = self.available_tasks.get(timeout=0)
             connected_task: ConnectedTask = ConnectedTask(task, connection_id)
             self.in_progress.append(connected_task)
             return task
@@ -42,7 +52,11 @@ class TaskManager:
             else:
                 raise NoMoreAvailableTasks
 
-    def connect_available_tasks(self, num_tasks: int, connection_id: str):
+    def connect_available_tasks(self, num_tasks: int, connection_id: str) -> List[Task]:
+        """
+        Connects num_tasks amount of tasks with a connection id associated with the connected slave
+        Returns a list of the tasks
+        """
         tasks: List[Task] = []
         for i in range(num_tasks):
             try:
@@ -51,22 +65,50 @@ class TaskManager:
                 return tasks
             except NoMoreTasks:
                 raise NoMoreTasks
+        return tasks
 
     def connection_dropped(self, connection_id: str):
-        pass
-        # new_in_progress: List[Task] = []
-        # for task in self.in_progress:
-            # if task.connection_id == connection_id:
-
+        """
+        Called by the master.ConnectionManager when a connection is removed.
+        Removes the task from the list of In Progress Tasks
+        Adds the task to the Available Tasks Queue
+        """
+        new_in_progress: List[ConnectedTask] = []
+        for connected_task in self.in_progress:
+            if connected_task.connection_id == connection_id:
+                self.new_available_task(connected_task.task)
+            else:
+                new_in_progress.append(connected_task)
+        self.in_progress = new_in_progress
 
     def new_available_task(self, task: Task):
+        """
+        Adds the task to the Available Tasks Queue
+        """
         self.available_tasks.put(task)
 
     def task_finished(self, finished_task: Task):
+        """
+        Removes the task from the list of In Progress Tasks
+        Adds the task to the Finished Tasks Queue
+        """
         self.finished_tasks.put(finished_task)
         self.in_progress = \
             [connected_task for connected_task in self.in_progress if connected_task.task.id != finished_task.id]
 
     def tasks_finished(self, tasks: List[Task]):
+        """
+        Removes the tasks from the list of In Progress Tasks
+        Adds the tasks to the Finished Tasks Queue
+        """
         for task in tasks:
             self.task_finished(task)
+
+    def flush_finished_tasks(self) -> List[Task]:
+        """
+        Removes all tasks from the Finished Tasks Queue and returns them
+        """
+        tasks: List[Task] = []
+        for _ in range(self.finished_tasks.qsize()):
+            tasks.append(self.finished_tasks.get())
+        return tasks

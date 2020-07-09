@@ -16,7 +16,7 @@ class Task:
     result_filename: str
 
     def __init__(self, task_id: int, cmd: str, payload):
-        self.task_id = task_id
+        self.id = task_id
         self.cmd = cmd
         self.payload = payload
 
@@ -28,3 +28,5 @@ class Task:
 
     def set_result_filename(self, result_filename: str):
         self.result_filename = result_filename
+
+
