@@ -53,7 +53,7 @@ class HyperMaster:
     def init_job(self, job: JobInfo):
         """
         Initializes the job for the master.
-        Ensures job files exist
+        Ensures jobfile is readable and job files exist
         """
 
         for file_name in job.file_names:
@@ -64,7 +64,7 @@ class HyperMaster:
 
         self.job = job
         # TODO: Randomize job id
-        self.job.job_id = 12345
+        self.job.job_id = 12345671
         logger.log_success(f'Job {self.job.job_id} initialized ')
 
     def start_server(self):
@@ -92,7 +92,7 @@ class HyperMaster:
             self.conn_manager.add_connection(conn_id)
 
             # read and parse the JSON
-            job_json = json_dumps(self.job)
+            job_json = json_dumps(self.job, default=lambda o: o.__dict__, sort_keys=True)
             return jsonify(job_json)
 
         @app.route(f'/{endpoints.FILE}/<int:job_id>/<string:file_name>', methods=["GET"])

@@ -3,6 +3,7 @@ Implemented fuctionality to run a slave node for a distributed workload
 """
 
 # External imports
+from json import loads as json_loads
 from pathlib import Path
 from random import random
 from shlex import split as cmd_split
@@ -78,7 +79,7 @@ class HyperSlave:
 
         except Exception as error:
             logger.log_error(
-                f'Exception of type {type(error)} occured\n{error}')
+                f'Exception of type {type(error)} occurred\n{error}')
             sys_exit(1)
 
         return None
@@ -174,7 +175,7 @@ class HyperSlave:
 
         # parse as JSON
         try:
-            job_json = resp.json()
+            job_json = json_loads(resp.json())
             self.job_id: int = job_json.get("job_id")
             job_file_names: list = job_json.get("file_names")
 
