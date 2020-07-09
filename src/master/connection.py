@@ -7,6 +7,7 @@ from threading import Timer, Event
 
 # Internal imports
 from common.logging import Logger
+from .task_manager import TaskManager
 
 logger = Logger()
 
@@ -22,7 +23,7 @@ class Connection:
     Connection object
     """
 
-    def __init__(self, connection_id, timeout_secs=5.0):
+    def __init__(self, connection_id: str, timeout_secs: float = 5.0):
         self.connection_id: str = connection_id
         self.timeout_secs: float = timeout_secs
         self.dead: Event = Event()
@@ -77,7 +78,8 @@ class ConnectionManager:
     Manages active connections
     """
 
-    def __init__(self, cleanup_timeout_secs=3.0):
+    def __init__(self, task_manager: TaskManager, cleanup_timeout_secs=3.0):
+        self.task_manager = task_manager
         self.running = True
         self.connections = {}
         self.connections_cleanup_timeout = cleanup_timeout_secs
@@ -98,6 +100,7 @@ class ConnectionManager:
                 active_connections[connection_id] = connection
             else:
                 logger.log_info(f'Connection [{connection_id}]: removed')
+                self.task_manager.connection_dropped(connection_id)
         self.connections = active_connections
 
         if self.running:

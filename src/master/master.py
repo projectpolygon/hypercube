@@ -9,6 +9,7 @@ from os import makedirs
 from pathlib import Path
 from sys import exit as sys_exit
 from time import sleep
+from typing import List
 from zlib import compress, error as CompressException
 from flask import Flask, Response, jsonify, request, send_file
 
@@ -17,9 +18,17 @@ import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
 from common.logging import Logger
 from common.networking import get_ip_addr
+from common.task import Task, TaskMessageType
 from .connection import ConnectionManager
 
 logger = Logger()
+
+
+class JobInfo:
+    job_id: int
+    job_path: str
+    file_names: List[str]
+    user_opts = None
 
 
 class HyperMaster:
@@ -27,48 +36,31 @@ class HyperMaster:
     HyperMaster Class.
     """
 
-    def __init__(self, host="0.0.0.0", port=5678, jobfile_name='jobfile'):
+    def __init__(self, host="0.0.0.0", port=5678):
         self.host = host
         self.port = port
-        self.jobfile_name = jobfile_name
         self.test_config = None
         self.task_queue = []
         self.conn_manager: ConnectionManager = ConnectionManager()
-        self.jobfile_path: str = None
-        self.job_path: str = None
+        self.job: JobInfo = None
 
-    def init_job(self):
+    def load_tasks(self, tasks: List[Task]):
+        self.enqueue(tasks)
+
+    def init_job(self, job: JobInfo):
         """
         Initializes the job for the master.
         Ensures jobfile is readable and job files exist
         """
 
-        cwd = str(Path.cwd().resolve())
-        job_root_dir_path = cwd + '/job'
-        Path.mkdir(Path(job_root_dir_path), parents=True, exist_ok=True)
-
-        jobfile_path = f'{job_root_dir_path}/{self.jobfile_name}'
-
-        while not Path(jobfile_path).exists():
-            logger.log_warn(
-                f'{self.jobfile_name} not found. Please provide one in {job_root_dir_path}')
-            logger.log_info('Sleeping for 3 seconds. Zzz...')
-            sleep(3)
-
-        with open(jobfile_path, "r") as job_file:
-            job_json = json_loads(job_file.read())
-            job_id = job_json.get("job_id")
-            job_file_names: list = job_json.get("file_names")
-
-        for file_name in job_file_names:
-            if not Path(f'{job_root_dir_path}/{file_name}').exists():
+        for file_name in job.file_names:
+            if not Path(f'{job.job_path}/{file_name}').exists():
                 logger.log_error(
                     f'{file_name} not found in job folder. Cannot continue')
                 sys_exit(1)
 
-        logger.log_success(f'Job {job_id} initialized ')
-        self.jobfile_path = jobfile_path
-        self.job_path = job_root_dir_path
+        logger.log_success(f'Job {job.job_id} initialized ')
+        self.job = job
 
     def start_server(self):
         """
@@ -94,10 +86,8 @@ class HyperMaster:
                 f'Job request from {conn_id},\nSaving connection...')
             self.conn_manager.add_connection(conn_id)
 
-            with open(self.jobfile_path, "r") as job_file:
-                # read and parse the JSON
-                job_json = json_loads(job_file.read())
-                return jsonify(job_json)
+            # read and parse the JSON
+            return jsonify(self.job)
 
         @app.route(f'/{endpoints.FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
         # pylint: disable=W0612
@@ -106,7 +96,7 @@ class HyperMaster:
             Endpoint to handle file request from the slave
             """
             try:
-                with open(f'{self.job_path}/{file_name}', "rb") as file:
+                with open(f'{self.job.job_path}/{file_name}', "rb") as file:
                     logger.log_info(
                         f'Sending {file_name} as part of job {job_id}')
                     file_data = file.read()
@@ -119,26 +109,30 @@ class HyperMaster:
                     )
 
             except CompressException as error:
-                logger.log_error(error)
+                logger.log_error(f'{error}')
                 return Response(status=500)
 
             except FileNotFoundError as error:
-                logger.log_error(error)
+                logger.log_error(f'{error}')
                 return Response(status=404)
 
             except Exception as error:
-                logger.log_error(error)
+                logger.log_error(f'{error}')
                 return Response(status=500)
 
-        @app.route(f'/{endpoints.TASK}/<int:job_id>', methods=["GET"])
+        @app.route(f'/{endpoints.TASK}/<int:num_task>', methods=["GET"])
         # pylint: disable=W0612
-        def get_task():
+        def get_task(num_tasks: int):
             """
-            arguments: job_id: int
-            read the message for information
+            arguments: num_task: int
             fetch task from the queue
             return this task "formatted" back to slave
             """
+            tasks: List[Task]
+            for i in range(num_tasks):
+                tasks.append(self.tasks.dequeue())
+
+
 
         @app.route(f'/{endpoints.TASK_DATA}/<int:job_id>/<int:task_id>', methods=["POST"])
         # pylint: disable=W0612
