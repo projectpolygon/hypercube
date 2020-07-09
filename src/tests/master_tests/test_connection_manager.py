@@ -1,5 +1,6 @@
 import pytest
 from master.connection import Connection, ConnectionDead, ConnectionManager
+from master.task_manager import TaskManager
 
 
 class TestConnectionManager:
@@ -9,7 +10,7 @@ class TestConnectionManager:
         """
         Before Each
         """
-        self.connection_manager = ConnectionManager()
+        self.connection_manager = ConnectionManager(TaskManager())
         self.connection_manager.connections_cleanup_timer.cancel()
         self.connection_manager.running = False
 

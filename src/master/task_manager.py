@@ -89,6 +89,13 @@ class TaskManager:
         """
         self.available_tasks.put(task)
 
+    def new_available_tasks(self, tasks: List[Task]):
+        """
+        Adds the tasks to the Available Tasks Queue
+        """
+        for task in tasks:
+            self.available_tasks.put(task)
+
     def task_finished(self, finished_task: Task):
         """
         Removes the task from the list of In Progress Tasks

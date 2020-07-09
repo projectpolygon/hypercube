@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, mock_open
-from master.master import HyperMaster, ConnectionManager, Path
+from master.master import HyperMaster, ConnectionManager, Path, TaskManager
 
 
 class TestMaster:
@@ -19,12 +19,11 @@ class TestMaster:
     def test_default_values(self):
         assert self.master.host == '0.0.0.0'
         assert self.master.port == 5678
-        assert self.master.jobfile_name == 'jobfile'
         assert self.master.test_config is None
         assert self.master.task_queue == []
-        assert self.master.jobfile_path is None
-        assert self.master.job_path is None
+        assert isinstance(self.master.task_manager, TaskManager)
         assert isinstance(self.master.conn_manager, ConnectionManager)
+        assert self.master.job is None
 
     @patch('builtins.open', new_callable=mock_open)
     @patch('master.master.json_loads')

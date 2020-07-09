@@ -4,13 +4,14 @@ Implemented functionality to run a master node for a distributed workload
 
 # External imports
 from io import BytesIO
-from json import loads as json_loads
+from json import loads as json_loads, dumps as json_dumps
 from os import makedirs
 from pathlib import Path
+from pickle import dumps as pickle_dumps, loads as pickle_loads
 from sys import exit as sys_exit
 from time import sleep
 from typing import List
-from zlib import compress, error as CompressException
+from zlib import compress, decompress, error as CompressException
 from flask import Flask, Response, jsonify, request, send_file
 
 # Internal imports
@@ -20,6 +21,7 @@ from common.logging import Logger
 from common.networking import get_ip_addr
 from common.task import Task, TaskMessageType
 from .connection import ConnectionManager
+from .task_manager import TaskManager
 
 logger = Logger()
 
@@ -41,11 +43,12 @@ class HyperMaster:
         self.port = port
         self.test_config = None
         self.task_queue = []
-        self.conn_manager: ConnectionManager = ConnectionManager()
-        self.job: JobInfo = None
+        self.task_manager = TaskManager()
+        self.conn_manager: ConnectionManager = ConnectionManager(self.task_manager)
+        self.job: JobInfo = JobInfo()
 
     def load_tasks(self, tasks: List[Task]):
-        self.enqueue(tasks)
+        self.task_manager.new_available_tasks(tasks)
 
     def init_job(self, job: JobInfo):
         """
@@ -59,8 +62,10 @@ class HyperMaster:
                     f'{file_name} not found in job folder. Cannot continue')
                 sys_exit(1)
 
-        logger.log_success(f'Job {job.job_id} initialized ')
         self.job = job
+        # TODO: Randomize job id
+        self.job.job_id = 12345
+        logger.log_success(f'Job {self.job.job_id} initialized ')
 
     def start_server(self):
         """
@@ -87,7 +92,8 @@ class HyperMaster:
             self.conn_manager.add_connection(conn_id)
 
             # read and parse the JSON
-            return jsonify(self.job)
+            job_json = json_dumps(self.job)
+            return jsonify(job_json)
 
         @app.route(f'/{endpoints.FILE}/<int:job_id>/<string:file_name>', methods=["GET"])
         # pylint: disable=W0612
@@ -120,7 +126,7 @@ class HyperMaster:
                 logger.log_error(f'{error}')
                 return Response(status=500)
 
-        @app.route(f'/{endpoints.TASK}/<int:num_task>', methods=["GET"])
+        @app.route(f'/{endpoints.TASK}/<int:num_tasks>', methods=["GET"])
         # pylint: disable=W0612
         def get_task(num_tasks: int):
             """
@@ -128,11 +134,16 @@ class HyperMaster:
             fetch task from the queue
             return this task "formatted" back to slave
             """
-            tasks: List[Task]
-            for i in range(num_tasks):
-                tasks.append(self.tasks.dequeue())
-
-
+            conn_id = request.cookies.get('id')
+            tasks: List[Task] = self.task_manager.connect_available_tasks(num_tasks, conn_id)
+            pickled_tasks = pickle_dumps(tasks)
+            compressed_data = compress(pickled_tasks)
+            return send_file(
+                BytesIO(compressed_data),
+                mimetype='application/octet-stream',
+                as_attachment=True,
+                attachment_filename=f'tasks_job_{self.job.job_id}'
+            )
 
         @app.route(f'/{endpoints.TASK_DATA}/<int:job_id>/<int:task_id>', methods=["POST"])
         # pylint: disable=W0612
@@ -142,6 +153,10 @@ class HyperMaster:
             read rest of data as JSON and pass payload to application
             return 200 ok
             """
+            raw_data = request.get_data()
+            tasks: List[Task] = pickle_loads(decompress(raw_data))
+            self.task_manager.tasks_finished(tasks)
+            return Response(status=200)
 
         @app.route(f'/{endpoints.DISCOVERY}')
         # pylint: disable=W0612
@@ -218,8 +233,6 @@ def create_app(hyper_master: HyperMaster):
     else:
         # load the test config if passed in
         app.config.from_mapping(hyper_master.test_config)
-
-    hyper_master.init_job()
 
     # TODO: optional step
     # ensure the instance folder exists so configurations can be added

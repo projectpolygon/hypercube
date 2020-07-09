@@ -15,18 +15,14 @@ class Task:
     payload: bytes
     result_filename: str
 
-    def __init__(self, task_id: int, cmd: str, payload):
+    def __init__(self, task_id: int, cmd: str, payload, result_filename: str):
         self.id = task_id
         self.cmd = cmd
         self.payload = payload
+        self.result_filename = result_filename
 
     def set_job(self, job_id: int):
         self.job_id = job_id
 
     def set_message_type(self, message_type: TaskMessageType):
         self.message_type = message_type
-
-    def set_result_filename(self, result_filename: str):
-        self.result_filename = result_filename
-
-
