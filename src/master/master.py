@@ -5,11 +5,12 @@ Implemented functionality to run a master node for a distributed workload
 # External imports
 from io import BytesIO
 from json import loads as json_loads, dumps as json_dumps
+from math import ceil
 from os import makedirs
 from pathlib import Path
 from pickle import dumps as pickle_dumps, loads as pickle_loads
+from random import random
 from sys import exit as sys_exit
-from time import sleep
 from typing import List
 from zlib import compress, decompress, error as CompressException
 from flask import Flask, Response, jsonify, request, send_file
@@ -53,7 +54,7 @@ class HyperMaster:
     def init_job(self, job: JobInfo):
         """
         Initializes the job for the master.
-        Ensures jobfile is readable and job files exist
+        Ensures job files exist
         """
 
         for file_name in job.file_names:
@@ -63,8 +64,7 @@ class HyperMaster:
                 sys_exit(1)
 
         self.job = job
-        # TODO: Randomize job id
-        self.job.job_id = 12345671
+        self.job.job_id = ceil(random() * random() * 9999)
         logger.log_success(f'Job {self.job.job_id} initialized ')
 
     def start_server(self):
@@ -174,7 +174,7 @@ class HyperMaster:
         # pylint: disable=W0612
         def heartbeat():
             """
-            Heartbeat recieved from a slave, indicating it is still connected
+            Heartbeat received from a slave, indicating it is still connected
             """
             conn_id = request.cookies.get('id')
             logger.log_info(f'Updating connection [{conn_id}]...')
