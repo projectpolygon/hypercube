@@ -106,8 +106,8 @@ class TaskManager:
         Adds the task to the Finished Tasks Queue
         """
         self.finished_tasks.put(finished_task)
-        self.in_progress = [connected_task for connected_task
-                            in self.in_progress if connected_task.task.task_id != finished_task.task_id]
+        self.in_progress = [connected_task for connected_task in self.in_progress
+                            if connected_task.task.task_id != finished_task.task_id]
 
     def tasks_finished(self, tasks: List[Task]):
         """
