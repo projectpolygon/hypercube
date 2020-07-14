@@ -4,8 +4,8 @@ Endpoint Constants
 
 JOB = 'job'
 FILE = 'file'
-TASK = 'task'
-TASK_DATA = 'taskdata'
+GET_TASKS = 'tasks'
+TASKS_DONE = 'tasks_done'
 HEARTBEAT = 'heartbeat'
 DISCOVERY = 'discovery'
 STATUS = 'status'

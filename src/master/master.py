@@ -8,11 +8,11 @@ from json import loads as json_loads, dumps as json_dumps
 from math import ceil
 from os import makedirs
 from pathlib import Path
-from pickle import dumps as pickle_dumps, loads as pickle_loads
+from pickle import dumps as pickle_dumps, loads as pickle_loads, PicklingError, UnpicklingError
 from random import random
 from sys import exit as sys_exit
 from typing import List
-from zlib import compress, decompress, error as CompressException
+from zlib import compress, decompress, error as CompressionException
 from flask import Flask, Response, jsonify, request, send_file
 
 # Internal imports
@@ -34,6 +34,19 @@ class JobInfo:
     user_opts = None
 
 
+class JobNotInitialized(AttributeError):
+    """
+    Exception raised when a operation requires the job to be initialized
+    but it isn't
+    """
+
+
+class WrongJob(Exception):
+    """
+    Exception raised when an endpoint's job id is not associated to this
+    master's current job
+    """
+
 class HyperMaster:
     """
     HyperMaster Class.
@@ -43,13 +56,16 @@ class HyperMaster:
         self.host = host
         self.port = port
         self.test_config = None
-        self.task_queue = []
         self.task_manager = TaskManager()
         self.conn_manager: ConnectionManager = ConnectionManager(self.task_manager)
         self.job: JobInfo = JobInfo()
 
     def load_tasks(self, tasks: List[Task]):
-        self.task_manager.new_available_tasks(tasks)
+        if not hasattr(self.job, 'job_id'):
+            logger.log_error("Can't load tasks for uninitialized job")
+            raise JobNotInitialized
+
+        self.task_manager.new_available_tasks(tasks, self.job.job_id)
 
     def init_job(self, job: JobInfo):
         """
@@ -79,6 +95,14 @@ class HyperMaster:
         Creates the required routes
         """
 
+        def job_check(job_id: int):
+            if not hasattr(self.job, 'job_id'):
+                logger.log_error("Uninitialized Job")
+                raise JobNotInitialized
+            if job_id != self.job.job_id:
+                logger.log_warn('Slave contacting wrong master')
+                raise WrongJob
+
         @app.route(f'/{endpoints.JOB}')
         # pylint: disable=W0612
         def get_job():
@@ -102,11 +126,12 @@ class HyperMaster:
             Endpoint to handle file request from the slave
             """
             try:
+                job_check(job_id)
                 with open(f'{self.job.job_path}/{file_name}', "rb") as file:
-                    logger.log_info(
-                        f'Sending {file_name} as part of job {job_id}')
                     file_data = file.read()
                     compressed_data = compress(file_data)
+                    logger.log_info(
+                        f'Sending {file_name} as part of job {job_id}')
                     return send_file(
                         BytesIO(compressed_data),
                         mimetype='application/octet-stream',
@@ -114,49 +139,95 @@ class HyperMaster:
                         attachment_filename=file_name
                     )
 
-            except CompressException as error:
-                logger.log_error(f'{error}')
+            except JobNotInitialized:
+                return Response(response="Job Not Initialized", status=403)
+
+            except WrongJob:
+                return Response(response="Wrong Master", status=403)
+
+            except CompressionException as error:
+                logger.log_error(f'Unable to compress file data\n{error}')
                 return Response(status=500)
 
             except FileNotFoundError as error:
-                logger.log_error(f'{error}')
+                logger.log_error(f'Unable to find \'{file_name}\'\n{error}')
                 return Response(status=404)
 
             except Exception as error:
-                logger.log_error(f'{error}')
-                return Response(status=500)
+                logger.log_error(f'{type(error)} {error}')
+                return Response(status=501)
 
-        @app.route(f'/{endpoints.TASK}/<int:num_tasks>', methods=["GET"])
+        @app.route(f'/{endpoints.GET_TASKS}/<int:job_id>/<int:num_tasks>', methods=["GET"])
         # pylint: disable=W0612
-        def get_task(num_tasks: int):
+        def get_tasks(job_id: int, num_tasks: int):
             """
             arguments: num_task: int
             fetch task from the queue
             return this task "formatted" back to slave
             """
-            conn_id = request.cookies.get('id')
-            tasks: List[Task] = self.task_manager.connect_available_tasks(num_tasks, conn_id)
-            pickled_tasks = pickle_dumps(tasks)
-            compressed_data = compress(pickled_tasks)
-            return send_file(
-                BytesIO(compressed_data),
-                mimetype='application/octet-stream',
-                as_attachment=True,
-                attachment_filename=f'tasks_job_{self.job.job_id}'
-            )
+            try:
+                conn_id = request.cookies.get('id')
+                job_check(job_id)
+                tasks: List[Task] = self.task_manager.connect_available_tasks(num_tasks, conn_id)
+                pickled_tasks = pickle_dumps(tasks)
+                compressed_data = compress(pickled_tasks)
+                return send_file(
+                    BytesIO(compressed_data),
+                    mimetype='application/octet-stream',
+                    as_attachment=True,
+                    attachment_filename=f'tasks_job_{self.job.job_id}'
+                )
 
-        @app.route(f'/{endpoints.TASK_DATA}/<int:job_id>/<int:task_id>', methods=["POST"])
+            except JobNotInitialized:
+                return Response(response="Job Not Initialized", status=403)
+
+            except WrongJob:
+                return Response(response="Wrong Master", status=403)
+
+            except PicklingError as error:
+                logger.log_error(f'Unable to pickle tasks\n{error}')
+                return Response(status=500)
+
+            except CompressionException as error:
+                logger.log_error(f'Unable to compress pickled tasks\n{error}')
+                return Response(status=500)
+
+            except Exception as error:
+                logger.log_error(f'{type(error)} {error}')
+                return Response(status=501)
+
+        @app.route(f'/{endpoints.TASKS_DONE}/<int:job_id>', methods=["POST"])
         # pylint: disable=W0612
-        def task_data():
+        def tasks_done(job_id: int):
             """
-            arguments: job_id: int, task_id: int
-            read rest of data as JSON and pass payload to application
+            arguments: job_id: int
+            Gets completed task  and pass payload to application
             return 200 ok
             """
-            raw_data = request.get_data()
-            tasks: List[Task] = pickle_loads(decompress(raw_data))
-            self.task_manager.tasks_finished(tasks)
-            return Response(status=200)
+            try:
+                job_check(job_id)
+                raw_data = request.get_data()
+                tasks: List[Task] = pickle_loads(decompress(raw_data))
+                self.task_manager.tasks_finished(tasks)
+                return Response(status=200)
+
+            except JobNotInitialized:
+                return Response(response="Job Not Initialized", status=403)
+
+            except WrongJob:
+                return Response(response="Wrong Master", status=403)
+
+            except CompressionException as error:
+                logger.log_error(f'Unable to decompress raw data\n{error}')
+                return Response(status=500)
+
+            except UnpicklingError as error:
+                logger.log_error(f'Unable to unpickle decompressed tasks\n{error}')
+                return Response(status=500)
+
+            except Exception as error:
+                logger.log_error(f'{type(error)} {error}')
+                return Response(status=501)
 
         @app.route(f'/{endpoints.DISCOVERY}')
         # pylint: disable=W0612

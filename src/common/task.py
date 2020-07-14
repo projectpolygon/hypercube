@@ -21,6 +21,14 @@ class Task:
         self.payload = payload
         self.result_filename = result_filename
 
+    def __eq__(self, other):
+        """
+        Needed to make an instance of this object comparable
+        """
+        if not isinstance(other, type(self)):
+            raise ValueError(f"Object is of type {type(other)}. Expected type {type(self)}")
+        return self.id == other.id and self.job_id == other.job_id
+
     def set_job(self, job_id: int):
         self.job_id = job_id
 
