@@ -1,3 +1,7 @@
+"""
+An example app that imports master and prepares the tasks
+"""
+
 from os import path
 
 from common.task import Task
@@ -12,12 +16,12 @@ if __name__ == "__main__":
     master: HyperMaster = HyperMaster()
     master.init_job(job)
 
-    cmd = "echo Hello"
-    payload = 0b1010
-    task1: Task = Task(1, cmd, payload, "task1.txt")
+    CMD = "echo Hello"
+    PAYLOAD = 0b1010
+    task1: Task = Task(1, CMD, PAYLOAD, "task1.txt")
 
-    cmd = "echo World"
-    task2: Task = Task(2, cmd, payload, "task1.txt")
+    CMD = "echo World"
+    task2: Task = Task(2, CMD, PAYLOAD, "task1.txt")
 
     master.load_tasks([task1, task2])
 

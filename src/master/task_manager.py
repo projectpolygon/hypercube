@@ -1,3 +1,7 @@
+"""
+Task Manager manages the Available, In Progress, and Completed Tasks for the Hyper Master
+"""
+
 from queue import SimpleQueue, Empty
 from typing import List
 
@@ -51,8 +55,7 @@ class TaskManager:
         except Empty:
             if len(self.in_progress) == 0:
                 raise NoMoreTasks
-            else:
-                raise NoMoreAvailableTasks
+            raise NoMoreAvailableTasks
 
     def connect_available_tasks(self, num_tasks: int, connection_id: str) -> List[Task]:
         """
@@ -60,7 +63,7 @@ class TaskManager:
         Returns a list of the tasks
         """
         tasks: List[Task] = []
-        for i in range(num_tasks):
+        for _ in range(num_tasks):
             try:
                 tasks.append(self.connect_available_task(connection_id))
             except NoMoreAvailableTasks:
@@ -95,7 +98,7 @@ class TaskManager:
         Adds the tasks to the Available Tasks Queue and attaches the job id to them
         """
         for task in tasks:
-            self.available_tasks.put(task)
+            self.new_available_task(task, job_id)
 
     def task_finished(self, finished_task: Task):
         """
@@ -103,8 +106,8 @@ class TaskManager:
         Adds the task to the Finished Tasks Queue
         """
         self.finished_tasks.put(finished_task)
-        self.in_progress = \
-            [connected_task for connected_task in self.in_progress if connected_task.task.id != finished_task.id]
+        self.in_progress = [connected_task for connected_task
+                            in self.in_progress if connected_task.task.task_id != finished_task.task_id]
 
     def tasks_finished(self, tasks: List[Task]):
         """

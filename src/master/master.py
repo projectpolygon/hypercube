@@ -4,7 +4,7 @@ Implemented functionality to run a master node for a distributed workload
 
 # External imports
 from io import BytesIO
-from json import loads as json_loads, dumps as json_dumps
+from json import dumps as json_dumps
 from math import ceil
 from os import makedirs
 from pathlib import Path
@@ -20,7 +20,7 @@ import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
 from common.logging import Logger
 from common.networking import get_ip_addr
-from common.task import Task, TaskMessageType
+from common.task import Task
 from .connection import ConnectionManager
 from .task_manager import TaskManager
 
@@ -28,6 +28,10 @@ logger = Logger()
 
 
 class JobInfo:
+    """
+    Object that defines a job
+    Meant to be imported and set by app that imports master
+    """
     job_id: int
     job_path: str
     file_names: List[str]
@@ -47,6 +51,7 @@ class WrongJob(Exception):
     master's current job
     """
 
+
 class HyperMaster:
     """
     HyperMaster Class.
@@ -61,6 +66,10 @@ class HyperMaster:
         self.job: JobInfo = JobInfo()
 
     def load_tasks(self, tasks: List[Task]):
+        """
+        Loads tasks into the Task Manager
+        Meant to be used by app that imports master to load prepared tasks
+        """
         if not hasattr(self.job, 'job_id'):
             logger.log_error("Can't load tasks for uninitialized job")
             raise JobNotInitialized

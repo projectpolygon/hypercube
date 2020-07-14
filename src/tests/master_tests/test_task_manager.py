@@ -97,10 +97,10 @@ class TestTaskManager:
         self.task_manager.connection_dropped(connection_id_1)
         # Assert
         assert len(self.task_manager.in_progress) == 1
-        assert self.task_manager.in_progress[0].task.id == task_3.id
+        assert self.task_manager.in_progress[0].task.task_id == task_3.task_id
         assert self.task_manager.available_tasks.qsize() == 2
-        assert self.task_manager.available_tasks.get().id == task_1.id
-        assert self.task_manager.available_tasks.get().id == task_2.id
+        assert self.task_manager.available_tasks.get().task_id == task_1.task_id
+        assert self.task_manager.available_tasks.get().task_id == task_2.task_id
 
     def test_new_available_task(self):
         # Arrange
