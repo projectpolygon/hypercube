@@ -15,7 +15,7 @@ class TestTaskManager:
     def test_connect_available_task(self):
         # Arrange
         new_task = Task(1, "", "", "")
-        self.task_manager.new_available_task(new_task)
+        self.task_manager.new_available_task(new_task, 1234)
         connection_id = "conn_1"
         expected_connected_task = ConnectedTask(new_task, connection_id)
         # Act
@@ -43,8 +43,8 @@ class TestTaskManager:
         # Arrange
         new_task_1 = Task(1, "", "", "")
         new_task_2 = Task(2, "", "", "")
-        self.task_manager.new_available_task(new_task_1)
-        self.task_manager.new_available_task(new_task_2)
+        self.task_manager.new_available_task(new_task_1, 1234)
+        self.task_manager.new_available_task(new_task_2, 1234)
         connection_id = "conn_1"
         expected_connected_task_1 = ConnectedTask(new_task_1, connection_id)
         # Act
@@ -60,8 +60,8 @@ class TestTaskManager:
         # Arrange
         new_task_1 = Task(1, "", "", "")
         new_task_2 = Task(2, "", "", "")
-        self.task_manager.new_available_task(new_task_1)
-        self.task_manager.new_available_task(new_task_2)
+        self.task_manager.new_available_task(new_task_1, 1234)
+        self.task_manager.new_available_task(new_task_2, 1234)
         connection_id = "conn_1"
         expected_connected_task_1 = ConnectedTask(new_task_1, connection_id)
         expected_connected_task_2 = ConnectedTask(new_task_2, connection_id)
@@ -88,9 +88,9 @@ class TestTaskManager:
         task_1 = Task(1, "", None, "")
         task_2 = Task(2, "", None, "")
         task_3 = Task(3, "", None, "")
-        self.task_manager.new_available_task(task_1)
-        self.task_manager.new_available_task(task_2)
-        self.task_manager.new_available_task(task_3)
+        self.task_manager.new_available_task(task_1, 1234)
+        self.task_manager.new_available_task(task_2, 1234)
+        self.task_manager.new_available_task(task_3, 1234)
         self.task_manager.connect_available_tasks(2, connection_id_1)
         self.task_manager.connect_available_task(connection_id_2)
         # Act
@@ -106,7 +106,7 @@ class TestTaskManager:
         # Arrange
         new_task = Task(1, "", None, "")
         # Act
-        self.task_manager.new_available_task(new_task)
+        self.task_manager.new_available_task(new_task, 1234)
         # Assert
         assert self.task_manager.available_tasks.qsize() == 1
         assert self.task_manager.available_tasks.get() == new_task
@@ -114,8 +114,10 @@ class TestTaskManager:
     def test_new_available_tasks(self):
         # Arrange
         new_tasks = [Task(1, "", None, ""), Task(2, "", None, "")]
+        for task in new_tasks:
+            task.job_id = 1234
         # Act
-        self.task_manager.new_available_tasks(new_tasks)
+        self.task_manager.new_available_tasks(new_tasks, 1234)
         # Assert
         assert self.task_manager.available_tasks.qsize() == 2
         assert self.task_manager.available_tasks.get() == new_tasks[0]
@@ -124,6 +126,7 @@ class TestTaskManager:
     def test_task_finished_queue(self):
         # Arrange
         finished_task = Task(1, "", None, "")
+        finished_task.job_id = 1234
         # Act
         self.task_manager.task_finished(finished_task)
         # Assert
@@ -134,8 +137,8 @@ class TestTaskManager:
         # Arrange
         finished_task = Task(1, "", "", "")
         task = Task(2, "", "", "")
-        self.task_manager.new_available_task(finished_task)
-        self.task_manager.new_available_task(task)
+        self.task_manager.new_available_task(finished_task, 1234)
+        self.task_manager.new_available_task(task, 1234)
         self.task_manager.connect_available_tasks(2, "")
         # Act
         self.task_manager.task_finished(finished_task)
