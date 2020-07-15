@@ -81,24 +81,24 @@ class TaskManager:
         new_in_progress: List[ConnectedTask] = []
         for connected_task in self.in_progress:
             if connected_task.connection_id == connection_id:
-                self.new_available_task(connected_task.task, connected_task.task.job_id)
+                self.add_new_available_task(connected_task.task, connected_task.task.job_id)
             else:
                 new_in_progress.append(connected_task)
         self.in_progress = new_in_progress
 
-    def new_available_task(self, task: Task, job_id: int):
+    def add_new_available_task(self, task: Task, job_id: int):
         """
         Adds the task to the Available Tasks Queue and attaches job id to them
         """
         task.set_job(job_id)
         self.available_tasks.put(task)
 
-    def new_available_tasks(self, tasks: List[Task], job_id: int):
+    def add_new_available_tasks(self, tasks: List[Task], job_id: int):
         """
         Adds the tasks to the Available Tasks Queue and attaches the job id to them
         """
         for task in tasks:
-            self.new_available_task(task, job_id)
+            self.add_new_available_task(task, job_id)
 
     def task_finished(self, finished_task: Task):
         """

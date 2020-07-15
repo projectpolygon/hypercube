@@ -74,7 +74,7 @@ class HyperMaster:
             logger.log_error("Can't load tasks for uninitialized job")
             raise JobNotInitialized
 
-        self.task_manager.new_available_tasks(tasks, self.job.job_id)
+        self.task_manager.add_new_available_tasks(tasks, self.job.job_id)
 
     def init_job(self, job: JobInfo):
         """

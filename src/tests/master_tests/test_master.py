@@ -149,7 +149,7 @@ class TestMaster:
         tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
         for task in tasks:
             task.set_job(1234)
-        self.master.task_manager.new_available_tasks(tasks, 1234)
+        self.master.task_manager.add_new_available_tasks(tasks, 1234)
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
         # Assert
@@ -164,7 +164,7 @@ class TestMaster:
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
         tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
-        self.master.task_manager.new_available_tasks(tasks, 1234)
+        self.master.task_manager.add_new_available_tasks(tasks, 1234)
         mock_pickle_dumps.side_effect = PicklingError
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
@@ -178,7 +178,7 @@ class TestMaster:
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
         tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
-        self.master.task_manager.new_available_tasks(tasks, 1234)
+        self.master.task_manager.add_new_available_tasks(tasks, 1234)
         mock_compress.side_effect = CompressionException
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
@@ -191,7 +191,7 @@ class TestMaster:
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
         task: Task = Task(1, '', None, '')
-        self.master.task_manager.new_available_task(task, 1234)
+        self.master.task_manager.add_new_available_task(task, 1234)
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/0/2')
         # Assert
@@ -202,7 +202,7 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         task: Task = Task(1, '', None, '')
-        self.master.task_manager.new_available_task(task, 1234)
+        self.master.task_manager.add_new_available_task(task, 1234)
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
         # Assert
