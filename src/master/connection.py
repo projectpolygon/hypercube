@@ -7,6 +7,7 @@ from threading import Timer, Event
 
 # Internal imports
 from common.logging import Logger
+from .task_manager import TaskManager
 
 logger = Logger()
 
@@ -21,8 +22,9 @@ class Connection:
     """
     Connection object
     """
+    log_prefix = "Connection\n"
 
-    def __init__(self, connection_id, timeout_secs=5.0):
+    def __init__(self, connection_id: str, timeout_secs: float = 5.0):
         self.connection_id: str = connection_id
         self.timeout_secs: float = timeout_secs
         self.dead: Event = Event()
@@ -61,7 +63,7 @@ class Connection:
         Called when the set amount of timeout seconds has been reached
         without a reset. This sets the dead flag of the connection
         """
-        logger.log_warn(f'Connection [{self.connection_id}]: timed out')
+        logger.log_warn(f'{self.log_prefix}Connection [{self.connection_id}]: timed out')
         self.dead.set()
 
     def is_alive(self):
@@ -76,8 +78,10 @@ class ConnectionManager:
     ConnectionManager object
     Manages active connections
     """
+    log_prefix = "ConnectionManager\n"
 
-    def __init__(self, cleanup_timeout_secs=3.0):
+    def __init__(self, task_manager: TaskManager, cleanup_timeout_secs=3.0):
+        self.task_manager = task_manager
         self.running = True
         self.connections = {}
         self.connections_cleanup_timeout = cleanup_timeout_secs
@@ -97,7 +101,8 @@ class ConnectionManager:
             if connection.is_alive():
                 active_connections[connection_id] = connection
             else:
-                logger.log_info(f'Connection [{connection_id}]: removed')
+                logger.log_info(f'{self.log_prefix}Connection [{connection_id}]: removed')
+                self.task_manager.connection_dropped(connection_id)
         self.connections = active_connections
 
         if self.running:
@@ -113,19 +118,19 @@ class ConnectionManager:
         """
         connection: Connection = Connection(connection_id, timeout_secs)
         self.connections[connection_id] = connection
-        logger.log_success('Connection [{self.connection_id}] Added', 'NEW CONNECTION')
+        logger.log_success(f'{self.log_prefix}Connection [{connection_id}] Added', 'NEW CONNECTION')
 
-    def reset_connection_timer(self, conn_id):
+    def reset_connection_timer(self, connection_id: str):
         """
         Resets a connection's timer
         """
-        connection: Connection = self.connections.get(conn_id)
+        connection: Connection = self.connections.get(connection_id)
         connection.reset_timer()
-        logger.log_info('Connection [{self.connection_id}] reset')
+        logger.log_info(f'{self.log_prefix}Connection [{connection_id}] reset')
 
     def get_connection(self, connection_id: str):
         """
-        Returns an alive connection if one is found
+        Returns an alive connection if one is found`
         else, raises ConnectionDead exception
         """
         connection: Connection = self.connections.get(connection_id)

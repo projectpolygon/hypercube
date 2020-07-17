@@ -7,5 +7,6 @@ exclude_lines =
     if __name__ == .__main__.:
 ignore_errors = True
 omit =
+    ./master_app_ex/*
     ./**/*tests*
     ./**/__init__.py

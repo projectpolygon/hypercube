@@ -236,7 +236,7 @@ class TestSlave:
     @patch('slave.slave.Session', spec=Session)
     def test_req_job(self, mock_session: Session, mock_resp: Response):
         # Arrange
-        mock_resp.json.return_value = {"job_id": 1, "file_names": ["file_name"]}
+        mock_resp.json.return_value = '{"job_id": 1, "file_names": ["file_name"]}'
         mock_session.return_value = mock_session
         mock_session.get.return_value = mock_resp
         self.slave.create_job_dir = MagicMock()
