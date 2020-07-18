@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import patch, mock_open
+
+import pytest
+
 from master.master import HyperMaster, ConnectionManager, Path, \
     TaskManager, JobInfo, create_app, compress, decompress, Response, \
-    CompressionException, BytesIO, pickle_dumps, pickle_loads, PicklingError, UnpicklingError, \
+    CompressionException, pickle_dumps, pickle_loads, PicklingError, UnpicklingError, \
     JobNotInitialized, Task, List, endpoints
 
 
@@ -234,6 +236,25 @@ class TestMaster:
         assert resp2.status_code == 200
         assert self.master.task_manager.finished_tasks.qsize() == 1
         assert self.master.task_manager.finished_tasks.get() == task
+
+    def test_tasks_done(self):
+        # Arrange
+        test_client = self.get_test_client()
+        test_client.set_cookie('server', 'id', 'test_session_id')
+        self.master.job.job_id = 1234
+        task1: Task = Task(1, '', None, '')
+        task2: Task = Task(2, '', None, '')
+        task1.set_job(1234)
+        task2.set_job(1234)
+        tasks: List[Task] = [task1, task2]
+        pickled_tasks = pickle_dumps(tasks)
+        compressed_data = compress(pickled_tasks)
+        # Act
+        resp2: Response = test_client.post(f'/{endpoints.TASKS_DONE}/1234', data=compressed_data)
+        # Assert
+        assert resp2.status_code == 200
+        assert self.master.task_manager.finished_tasks.qsize() == 2
+        assert self.master.task_manager.finished_tasks.get() == tasks[0]
 
     def test_tasks_done_job_uninitialized_error(self):
         # Arrange

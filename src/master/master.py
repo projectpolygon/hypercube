@@ -20,9 +20,9 @@ import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
 from common.logging import Logger
 from common.networking import get_ip_addr
-from common.task import Task
+from common.task import Task, TaskMessageType
 from .connection import ConnectionManager
-from .task_manager import TaskManager
+from .task_manager import TaskManager, NoMoreTasks
 
 logger = Logger()
 
@@ -52,6 +52,14 @@ class WrongJob(Exception):
     """
 
 
+class Status:
+    def __init__(self):
+        self.num_slaves: int = 0
+        self.num_tasks_done: int = 0
+        self.num_tasks: int = 0
+        self.job_done: bool = False
+
+
 class HyperMaster:
     """
     HyperMaster Class.
@@ -61,8 +69,9 @@ class HyperMaster:
         self.host = host
         self.port = port
         self.test_config = None
-        self.task_manager = TaskManager()
-        self.conn_manager: ConnectionManager = ConnectionManager(self.task_manager)
+        self.status = Status()
+        self.task_manager = TaskManager(self.status)
+        self.conn_manager: ConnectionManager = ConnectionManager(self.task_manager, self.status)
         self.job: JobInfo = JobInfo()
 
     def load_tasks(self, tasks: List[Task]):
@@ -75,6 +84,7 @@ class HyperMaster:
             raise JobNotInitialized
 
         self.task_manager.add_new_available_tasks(tasks, self.job.job_id)
+        self.status.num_tasks = len(tasks)
 
     def init_job(self, job: JobInfo):
         """
@@ -112,6 +122,14 @@ class HyperMaster:
                 logger.log_warn('Slave contacting wrong master')
                 raise WrongJob
 
+        def create_binary_resp(data: bytes, file_name: str):
+            return send_file(
+                BytesIO(data),
+                mimetype='application/octet-stream',
+                as_attachment=True,
+                attachment_filename=file_name
+            )
+
         @app.route(f'/{endpoints.JOB}')
         # pylint: disable=W0612
         def get_job():
@@ -141,12 +159,7 @@ class HyperMaster:
                     compressed_data = compress(file_data)
                     logger.log_info(
                         f'Sending {file_name} as part of job {job_id}')
-                    return send_file(
-                        BytesIO(compressed_data),
-                        mimetype='application/octet-stream',
-                        as_attachment=True,
-                        attachment_filename=file_name
-                    )
+                    return create_binary_resp(compressed_data, file_name)
 
             except JobNotInitialized:
                 return Response(response="Job Not Initialized", status=403)
@@ -180,12 +193,18 @@ class HyperMaster:
                 tasks: List[Task] = self.task_manager.connect_available_tasks(num_tasks, conn_id)
                 pickled_tasks = pickle_dumps(tasks)
                 compressed_data = compress(pickled_tasks)
-                return send_file(
-                    BytesIO(compressed_data),
-                    mimetype='application/octet-stream',
-                    as_attachment=True,
-                    attachment_filename=f'tasks_job_{self.job.job_id}'
-                )
+                return create_binary_resp(compressed_data, f'tasks_job_{self.job.job_id}')
+
+            except NoMoreTasks:
+                if self.status.job_done:
+                    job_finished_task = Task(-1, "", None, "")
+                    job_finished_task.set_message_type(TaskMessageType.JOB_END)
+                    pickled_tasks = pickle_dumps([job_finished_task])
+                    compressed_data = compress(pickled_tasks)
+                    return create_binary_resp(compressed_data, f'job_{self.job.job_id}_done')
+                else:
+                    logger.log_error(f'Unable to retrieve tasks from manager')
+                    return Response(status=500)
 
             except JobNotInitialized:
                 return Response(response="Job Not Initialized", status=403)

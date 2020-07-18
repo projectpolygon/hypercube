@@ -8,6 +8,7 @@ from threading import Timer, Event
 # Internal imports
 from common.logging import Logger
 from .task_manager import TaskManager
+from .master import Status
 
 logger = Logger()
 
@@ -80,7 +81,7 @@ class ConnectionManager:
     """
     log_prefix = "ConnectionManager\n"
 
-    def __init__(self, task_manager: TaskManager, cleanup_timeout_secs=3.0):
+    def __init__(self, task_manager: TaskManager, status: Status, cleanup_timeout_secs=3.0):
         self.task_manager = task_manager
         self.running = True
         self.connections = {}
@@ -89,6 +90,7 @@ class ConnectionManager:
             self.connections_cleanup_timeout, self.cleanup_connections)
         self.connections_cleanup_timer.daemon = True
         self.connections_cleanup_timer.start()
+        self.status: Status = status
 
     def cleanup_connections(self):
         """
@@ -103,6 +105,7 @@ class ConnectionManager:
             else:
                 logger.log_info(f'{self.log_prefix}Connection [{connection_id}]: removed')
                 self.task_manager.connection_dropped(connection_id)
+                self.status.num_slaves -= 1
         self.connections = active_connections
 
         if self.running:
@@ -116,6 +119,7 @@ class ConnectionManager:
         Adds a new connection to the connections dict
         Will replace existing connection if one exists with the same connection id
         """
+        self.status.num_slaves += 1
         connection: Connection = Connection(connection_id, timeout_secs)
         self.connections[connection_id] = connection
         logger.log_success(f'{self.log_prefix}Connection [{connection_id}] Added', 'NEW CONNECTION')

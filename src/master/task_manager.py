@@ -8,6 +8,8 @@ from typing import List
 from common.task import Task
 from common.logging import Logger
 
+from .master import Status
+
 logger = Logger()
 
 
@@ -37,10 +39,11 @@ class TaskManager:
     Manages Tasks
     """
 
-    def __init__(self):
+    def __init__(self, status: Status):
         self.available_tasks: SimpleQueue = SimpleQueue()
         self.in_progress: List[ConnectedTask] = []
         self.finished_tasks: SimpleQueue = SimpleQueue()
+        self.status: Status = status
 
     def connect_available_task(self, connection_id: str) -> Task:
         """
@@ -105,9 +108,12 @@ class TaskManager:
         Removes the task from the list of In Progress Tasks
         Adds the task to the Finished Tasks Queue
         """
+        self.status.num_tasks_done += 1
         self.finished_tasks.put(finished_task)
         self.in_progress = [connected_task for connected_task in self.in_progress
                             if connected_task.task.task_id != finished_task.task_id]
+        if len(self.in_progress) == 0 and self.available_tasks.empty():
+            self.status.job_done = True
 
     def tasks_finished(self, tasks: List[Task]):
         """
