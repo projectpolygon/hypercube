@@ -1,5 +1,6 @@
 import pytest
 from common.task import Task
+from master.status_manager import StatusManager
 from master.task_manager import TaskManager, ConnectedTask, NoMoreTasks, NoMoreAvailableTasks
 
 
@@ -10,7 +11,7 @@ class TestTaskManager:
         """
         Before Each
         """
-        self.task_manager = TaskManager()
+        self.task_manager = TaskManager(StatusManager())
 
     def test_connect_available_task(self):
         # Arrange
@@ -147,6 +148,8 @@ class TestTaskManager:
         assert self.task_manager.in_progress[0].task == task
         assert self.task_manager.finished_tasks.qsize() == 1
         assert self.task_manager.finished_tasks.get() == finished_task
+        assert self.task_manager.status_manager.status.num_tasks_done == 1
+        assert not self.task_manager.status_manager.is_job_done()
 
     def test_tasks_finished(self):
         # Arrange
@@ -155,6 +158,8 @@ class TestTaskManager:
         self.task_manager.tasks_finished(finished_tasks)
         # Assert
         assert self.task_manager.finished_tasks.qsize() == 3
+        assert self.task_manager.status_manager.status.num_tasks_done == 3
+        assert self.task_manager.status_manager.is_job_done()
 
     def test_flush_finished_tasks(self):
         # Arrange

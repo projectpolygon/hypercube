@@ -11,7 +11,7 @@ class TaskMessageType(Enum):
     """
     TASK_RAW = 0
     TASK_PROCESSED = 1
-    TASK_END = 2
+    JOB_END = 2
 
 
 class Task:

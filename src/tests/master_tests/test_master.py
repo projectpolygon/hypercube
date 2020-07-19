@@ -1,9 +1,13 @@
+from unittest.mock import patch, mock_open, MagicMock
+
 import pytest
-from unittest.mock import patch, mock_open
+
+from common.task import TaskMessageType
 from master.master import HyperMaster, ConnectionManager, Path, \
     TaskManager, JobInfo, create_app, compress, decompress, Response, \
-    CompressionException, BytesIO, pickle_dumps, pickle_loads, PicklingError, UnpicklingError, \
+    CompressionException, pickle_dumps, pickle_loads, PicklingError, UnpicklingError, \
     JobNotInitialized, Task, List, endpoints
+from master.status_manager import Status
 
 
 class TestMaster:
@@ -31,6 +35,44 @@ class TestMaster:
         assert isinstance(self.master.conn_manager, ConnectionManager)
         assert isinstance(self.master.job, JobInfo)
 
+    def test_is_job_done(self):
+        # Arrange
+        self.master.status_manager.job_completed()
+        # Act & Assert
+        assert self.master.is_job_done()
+
+    def test_get_status(self):
+        # Arrange
+        status = Status()
+        status.job_done = True
+        status.num_tasks_done = 30
+        status.num_tasks = 30
+        status.num_slaves = 2
+        self.master.status_manager.status = status
+        expected_status = self.master.status_manager.get_status()
+        # Act & Assert
+        assert self.master.get_status() == expected_status
+
+    def test_print_status(self, capsys):
+        # Arrange
+        expected_data = self.master.status_manager.get_status()
+        # Act
+        self.master.print_status()
+        captured = capsys.readouterr()
+        # Assert
+        assert expected_data in captured.out
+
+    def test_get_completed_tasks(self):
+        # Arrange
+        completed_tasks: List[Task] = [Task(0, "", None, ""), Task(1, "", None, "")]
+        self.master.task_manager.tasks_finished(completed_tasks)
+        # Act
+        returned_tasks = self.master.get_completed_tasks()
+        # Assert
+        assert returned_tasks == completed_tasks
+
+
+    # API Testing
     def test_load_tasks(self):
         # Arrange
         self.master.job.job_id = 1234
@@ -157,6 +199,30 @@ class TestMaster:
         assert len(actual_data) == 2
         assert actual_data == tasks[0:2]
 
+    def test_get_tasks_job_done(self):
+        # Arrange
+        test_client = self.get_test_client()
+        test_client.set_cookie('server', 'id', 'test_session_id')
+        self.master.job.job_id = 1234
+        tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
+        self.master.task_manager.tasks_finished(tasks)
+        # Act
+        resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
+        # Assert
+        actual_data: List[Task] = pickle_loads(decompress(resp.data))
+        assert len(actual_data) == 1
+        assert actual_data[0].message_type == TaskMessageType.JOB_END
+
+    def test_get_tasks_no_more_tasks(self):
+        # Arrange
+        test_client = self.get_test_client()
+        test_client.set_cookie('server', 'id', 'test_session_id')
+        self.master.job.job_id = 1234
+        # Act
+        resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
+        # Assert
+        assert resp.status_code == 500
+
     @patch('master.master.pickle_dumps')
     def test_get_tasks_pickle_error(self, mock_pickle_dumps):
         # Arrange
@@ -213,6 +279,8 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
+        self.master.task_manager.connect_available_tasks = \
+            MagicMock(side_effect=Exception("Mock Error. Ignore Me!"))
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
         # Assert
@@ -234,6 +302,25 @@ class TestMaster:
         assert resp2.status_code == 200
         assert self.master.task_manager.finished_tasks.qsize() == 1
         assert self.master.task_manager.finished_tasks.get() == task
+
+    def test_tasks_done(self):
+        # Arrange
+        test_client = self.get_test_client()
+        test_client.set_cookie('server', 'id', 'test_session_id')
+        self.master.job.job_id = 1234
+        task1: Task = Task(1, '', None, '')
+        task2: Task = Task(2, '', None, '')
+        task1.set_job(1234)
+        task2.set_job(1234)
+        tasks: List[Task] = [task1, task2]
+        pickled_tasks = pickle_dumps(tasks)
+        compressed_data = compress(pickled_tasks)
+        # Act
+        resp2: Response = test_client.post(f'/{endpoints.TASKS_DONE}/1234', data=compressed_data)
+        # Assert
+        assert resp2.status_code == 200
+        assert self.master.task_manager.finished_tasks.qsize() == 2
+        assert self.master.task_manager.finished_tasks.get() == tasks[0]
 
     def test_tasks_done_job_uninitialized_error(self):
         # Arrange

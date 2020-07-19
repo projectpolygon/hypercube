@@ -1,6 +1,7 @@
 import pytest
-from master.connection import Connection, ConnectionDead, ConnectionManager
+from master.connection_manager import Connection, ConnectionDead, ConnectionManager
 from master.task_manager import TaskManager
+from master.status_manager import StatusManager
 
 
 class TestConnectionManager:
@@ -10,7 +11,8 @@ class TestConnectionManager:
         """
         Before Each
         """
-        self.connection_manager = ConnectionManager(TaskManager())
+        status_manager = StatusManager()
+        self.connection_manager = ConnectionManager(TaskManager(status_manager), status_manager)
         self.connection_manager.connections_cleanup_timer.cancel()
         self.connection_manager.running = False
 
@@ -23,12 +25,14 @@ class TestConnectionManager:
 
     def test_add_get_connection(self):
         # Arrange
+        original_status = self.connection_manager.status_manager.status.num_slaves
         self.connection_manager.add_connection('test_id')
         # Act
         connection = self.connection_manager.get_connection('test_id')
         connection.timer.cancel()
         # Assert
         assert (isinstance(connection, Connection))
+        assert self.connection_manager.status_manager.status.num_slaves == original_status + 1
 
     def test_get_connection_exception_no_connection(self):
         with pytest.raises(ConnectionDead):
@@ -74,6 +78,7 @@ class TestConnectionManager:
         conn_2 = self.connection_manager.get_connection('test_conn_2')
         conn_1.timer.cancel()
         conn_2.timer.cancel()
+        original_status = self.connection_manager.status_manager.status.num_slaves
         # Act
         conn_1.timeout()
         self.connection_manager.cleanup_connections()
@@ -81,3 +86,4 @@ class TestConnectionManager:
         with pytest.raises(ConnectionDead):
             assert (self.connection_manager.get_connection('test_conn_1'))
         assert (self.connection_manager.get_connection('test_conn_2'))
+        assert self.connection_manager.status_manager.status.num_slaves == original_status - 1

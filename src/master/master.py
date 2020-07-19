@@ -20,9 +20,10 @@ import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
 from common.logging import Logger
 from common.networking import get_ip_addr
-from common.task import Task
-from .connection import ConnectionManager
-from .task_manager import TaskManager
+from common.task import Task, TaskMessageType
+from .status_manager import StatusManager
+from .connection_manager import ConnectionManager
+from .task_manager import TaskManager, NoMoreTasks
 
 logger = Logger()
 
@@ -61,8 +62,10 @@ class HyperMaster:
         self.host = host
         self.port = port
         self.test_config = None
-        self.task_manager = TaskManager()
-        self.conn_manager: ConnectionManager = ConnectionManager(self.task_manager)
+        self.status_manager = StatusManager()
+        self.task_manager = TaskManager(self.status_manager)
+        self.conn_manager: ConnectionManager = \
+            ConnectionManager(self.task_manager, self.status_manager)
         self.job: JobInfo = JobInfo()
 
     def load_tasks(self, tasks: List[Task]):
@@ -75,6 +78,7 @@ class HyperMaster:
             raise JobNotInitialized
 
         self.task_manager.add_new_available_tasks(tasks, self.job.job_id)
+        self.status_manager.tasks_loaded(len(tasks))
 
     def init_job(self, job: JobInfo):
         """
@@ -97,7 +101,7 @@ class HyperMaster:
         Starts the server
         """
         app = create_app(self)
-        app.run(host=self.host, port=self.port, debug=True)
+        app.run(host=self.host, port=self.port, debug=True, use_reloader=False)
 
     def create_routes(self, app):
         """
@@ -111,6 +115,14 @@ class HyperMaster:
             if job_id != self.job.job_id:
                 logger.log_warn('Slave contacting wrong master')
                 raise WrongJob
+
+        def create_binary_resp(data: bytes, file_name: str):
+            return send_file(
+                BytesIO(data),
+                mimetype='application/octet-stream',
+                as_attachment=True,
+                attachment_filename=file_name
+            )
 
         @app.route(f'/{endpoints.JOB}')
         # pylint: disable=W0612
@@ -141,12 +153,7 @@ class HyperMaster:
                     compressed_data = compress(file_data)
                     logger.log_info(
                         f'Sending {file_name} as part of job {job_id}')
-                    return send_file(
-                        BytesIO(compressed_data),
-                        mimetype='application/octet-stream',
-                        as_attachment=True,
-                        attachment_filename=file_name
-                    )
+                    return create_binary_resp(compressed_data, file_name)
 
             except JobNotInitialized:
                 return Response(response="Job Not Initialized", status=403)
@@ -180,12 +187,18 @@ class HyperMaster:
                 tasks: List[Task] = self.task_manager.connect_available_tasks(num_tasks, conn_id)
                 pickled_tasks = pickle_dumps(tasks)
                 compressed_data = compress(pickled_tasks)
-                return send_file(
-                    BytesIO(compressed_data),
-                    mimetype='application/octet-stream',
-                    as_attachment=True,
-                    attachment_filename=f'tasks_job_{self.job.job_id}'
-                )
+                return create_binary_resp(compressed_data, f'tasks_job_{self.job.job_id}')
+
+            except NoMoreTasks:
+                if self.status_manager.is_job_done():
+                    job_finished_task = Task(-1, "", None, "")
+                    job_finished_task.set_message_type(TaskMessageType.JOB_END)
+                    pickled_tasks = pickle_dumps([job_finished_task])
+                    compressed_data = compress(pickled_tasks)
+                    return create_binary_resp(compressed_data, f'job_{self.job.job_id}_done')
+
+                logger.log_error('Unable to retrieve tasks from manager')
+                return Response(status=500)
 
             except JobNotInitialized:
                 return Response(response="Job Not Initialized", status=403)
@@ -295,11 +308,35 @@ class HyperMaster:
         do stuff
         """
 
+    def is_job_done(self):
+        """
+        Convenience Function that calls StatusManager function of same name
+        """
+        return self.status_manager.is_job_done()
+
+    def get_status(self):
+        """
+        Convenience Function that calls StatusManager function of same name
+        """
+        return self.status_manager.get_status()
+
+    def print_status(self):
+        """
+        Convenience Function that calls StatusManager function of same name
+        """
+        self.status_manager.print_status()
+
+    def get_completed_tasks(self):
+        """
+        Returns completed tasks from the TaskManager
+        """
+        return self.task_manager.flush_finished_tasks()
+
 
 # OVERLOADED DO NOT RENAME
 def create_app(hyper_master: HyperMaster):
     """
-    Creates and lauches the master node application
+    Creates and launches the master node application
     """
 
     # create and configure the Flask app
@@ -325,15 +362,3 @@ def create_app(hyper_master: HyperMaster):
     hyper_master.create_routes(app)
 
     return app
-
-
-# TODO: normally, this would be imported
-# as a module, and used in application code
-if __name__ == "__main__":
-    # create the hypermaster
-    server = HyperMaster()
-
-    # TODO: here would be where you would bind handler functions etc.
-
-    # pass control to the server
-    server.start_server()
