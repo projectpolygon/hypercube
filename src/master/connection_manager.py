@@ -7,8 +7,8 @@ from threading import Timer, Event
 
 # Internal imports
 from common.logging import Logger
-from .task_manager import TaskManager
-from .master import Status
+from master.status_manager import StatusManager
+from master.task_manager import TaskManager
 
 logger = Logger()
 
@@ -23,7 +23,7 @@ class Connection:
     """
     Connection object
     """
-    log_prefix = "Connection\n"
+    log_prefix = "[Connection]\n"
 
     def __init__(self, connection_id: str, timeout_secs: float = 5.0):
         self.connection_id: str = connection_id
@@ -79,10 +79,11 @@ class ConnectionManager:
     ConnectionManager object
     Manages active connections
     """
-    log_prefix = "ConnectionManager\n"
+    log_prefix = "[ConnectionManager]\n"
 
-    def __init__(self, task_manager: TaskManager, status: Status, cleanup_timeout_secs=3.0):
+    def __init__(self, task_manager: TaskManager, status_manager: StatusManager, cleanup_timeout_secs=3.0):
         self.task_manager = task_manager
+        self.status_manager = status_manager
         self.running = True
         self.connections = {}
         self.connections_cleanup_timeout = cleanup_timeout_secs
@@ -90,7 +91,6 @@ class ConnectionManager:
             self.connections_cleanup_timeout, self.cleanup_connections)
         self.connections_cleanup_timer.daemon = True
         self.connections_cleanup_timer.start()
-        self.status: Status = status
 
     def cleanup_connections(self):
         """
@@ -105,7 +105,7 @@ class ConnectionManager:
             else:
                 logger.log_info(f'{self.log_prefix}Connection [{connection_id}]: removed')
                 self.task_manager.connection_dropped(connection_id)
-                self.status.num_slaves -= 1
+                self.status_manager.slave_disconnected()
         self.connections = active_connections
 
         if self.running:
@@ -119,9 +119,9 @@ class ConnectionManager:
         Adds a new connection to the connections dict
         Will replace existing connection if one exists with the same connection id
         """
-        self.status.num_slaves += 1
         connection: Connection = Connection(connection_id, timeout_secs)
         self.connections[connection_id] = connection
+        self.status_manager.new_slave_connected()
         logger.log_success(f'{self.log_prefix}Connection [{connection_id}] Added', 'NEW CONNECTION')
 
     def reset_connection_timer(self, connection_id: str):

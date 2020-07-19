@@ -1,7 +1,8 @@
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, MagicMock
 
 import pytest
 
+from common.task import TaskMessageType
 from master.master import HyperMaster, ConnectionManager, Path, \
     TaskManager, JobInfo, create_app, compress, decompress, Response, \
     CompressionException, pickle_dumps, pickle_loads, PicklingError, UnpicklingError, \
@@ -159,6 +160,30 @@ class TestMaster:
         assert len(actual_data) == 2
         assert actual_data == tasks[0:2]
 
+    def test_get_tasks_job_done(self):
+        # Arrange
+        test_client = self.get_test_client()
+        test_client.set_cookie('server', 'id', 'test_session_id')
+        self.master.job.job_id = 1234
+        tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
+        self.master.task_manager.tasks_finished(tasks)
+        # Act
+        resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
+        # Assert
+        actual_data: List[Task] = pickle_loads(decompress(resp.data))
+        assert len(actual_data) == 1
+        assert actual_data[0].message_type == TaskMessageType.JOB_END
+
+    def test_get_tasks_no_more_tasks(self):
+        # Arrange
+        test_client = self.get_test_client()
+        test_client.set_cookie('server', 'id', 'test_session_id')
+        self.master.job.job_id = 1234
+        # Act
+        resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
+        # Assert
+        assert resp.status_code == 500
+
     @patch('master.master.pickle_dumps')
     def test_get_tasks_pickle_error(self, mock_pickle_dumps):
         # Arrange
@@ -215,6 +240,8 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
+        self.master.task_manager.connect_available_tasks = \
+            MagicMock(side_effect=Exception("Mock Error. Ignore Me!"))
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
         # Assert

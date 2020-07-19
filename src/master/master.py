@@ -21,7 +21,8 @@ from common.api.types import MasterInfo
 from common.logging import Logger
 from common.networking import get_ip_addr
 from common.task import Task, TaskMessageType
-from .connection import ConnectionManager
+from .status_manager import StatusManager
+from .connection_manager import ConnectionManager
 from .task_manager import TaskManager, NoMoreTasks
 
 logger = Logger()
@@ -52,14 +53,6 @@ class WrongJob(Exception):
     """
 
 
-class Status:
-    def __init__(self):
-        self.num_slaves: int = 0
-        self.num_tasks_done: int = 0
-        self.num_tasks: int = 0
-        self.job_done: bool = False
-
-
 class HyperMaster:
     """
     HyperMaster Class.
@@ -69,9 +62,9 @@ class HyperMaster:
         self.host = host
         self.port = port
         self.test_config = None
-        self.status = Status()
-        self.task_manager = TaskManager(self.status)
-        self.conn_manager: ConnectionManager = ConnectionManager(self.task_manager, self.status)
+        self.status_manager = StatusManager()
+        self.task_manager = TaskManager(self.status_manager)
+        self.conn_manager: ConnectionManager = ConnectionManager(self.task_manager, self.status_manager)
         self.job: JobInfo = JobInfo()
 
     def load_tasks(self, tasks: List[Task]):
@@ -84,7 +77,7 @@ class HyperMaster:
             raise JobNotInitialized
 
         self.task_manager.add_new_available_tasks(tasks, self.job.job_id)
-        self.status.num_tasks = len(tasks)
+        self.status_manager.tasks_loaded(len(tasks))
 
     def init_job(self, job: JobInfo):
         """
@@ -196,7 +189,7 @@ class HyperMaster:
                 return create_binary_resp(compressed_data, f'tasks_job_{self.job.job_id}')
 
             except NoMoreTasks:
-                if self.status.job_done:
+                if self.status_manager.is_job_done():
                     job_finished_task = Task(-1, "", None, "")
                     job_finished_task.set_message_type(TaskMessageType.JOB_END)
                     pickled_tasks = pickle_dumps([job_finished_task])
