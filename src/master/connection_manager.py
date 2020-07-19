@@ -91,6 +91,7 @@ class ConnectionManager:
             self.connections_cleanup_timeout, self.cleanup_connections)
         self.connections_cleanup_timer.daemon = True
         self.connections_cleanup_timer.start()
+        logger.log_trace(f'{self.log_prefix}Connection Manager Initialized')
 
     def cleanup_connections(self):
         """
@@ -103,9 +104,9 @@ class ConnectionManager:
             if connection.is_alive():
                 active_connections[connection_id] = connection
             else:
-                logger.log_info(f'{self.log_prefix}Connection [{connection_id}]: removed')
                 self.task_manager.connection_dropped(connection_id)
                 self.status_manager.slave_disconnected()
+                logger.log_info(f'{self.log_prefix}Connection [{connection_id}]: removed')
         self.connections = active_connections
 
         if self.running:

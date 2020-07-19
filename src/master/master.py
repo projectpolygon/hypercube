@@ -100,7 +100,7 @@ class HyperMaster:
         Starts the server
         """
         app = create_app(self)
-        app.run(host=self.host, port=self.port, debug=True)
+        app.run(host=self.host, port=self.port, debug=True, use_reloader=False)
 
     def create_routes(self, app):
         """
