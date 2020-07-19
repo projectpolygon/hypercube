@@ -7,6 +7,7 @@ from master.master import HyperMaster, ConnectionManager, Path, \
     TaskManager, JobInfo, create_app, compress, decompress, Response, \
     CompressionException, pickle_dumps, pickle_loads, PicklingError, UnpicklingError, \
     JobNotInitialized, Task, List, endpoints
+from master.status_manager import Status
 
 
 class TestMaster:
@@ -34,6 +35,44 @@ class TestMaster:
         assert isinstance(self.master.conn_manager, ConnectionManager)
         assert isinstance(self.master.job, JobInfo)
 
+    def test_is_job_done(self):
+        # Arrange
+        self.master.status_manager.job_completed()
+        # Act & Assert
+        assert self.master.is_job_done()
+
+    def test_get_status(self):
+        # Arrange
+        status = Status()
+        status.job_done = True
+        status.num_tasks_done = 30
+        status.num_tasks = 30
+        status.num_slaves = 2
+        self.master.status_manager.status = status
+        expected_status = self.master.status_manager.get_status()
+        # Act & Assert
+        assert self.master.get_status() == expected_status
+
+    def test_print_status(self, capsys):
+        # Arrange
+        expected_data = self.master.status_manager.get_status()
+        # Act
+        self.master.print_status()
+        captured = capsys.readouterr()
+        # Assert
+        assert expected_data in captured.out
+
+    def test_get_completed_tasks(self):
+        # Arrange
+        completed_tasks: List[Task] = [Task(0, "", None, ""), Task(1, "", None, "")]
+        self.master.task_manager.tasks_finished(completed_tasks)
+        # Act
+        returned_tasks = self.master.get_completed_tasks()
+        # Assert
+        assert returned_tasks == completed_tasks
+
+
+    # API Testing
     def test_load_tasks(self):
         # Arrange
         self.master.job.job_id = 1234

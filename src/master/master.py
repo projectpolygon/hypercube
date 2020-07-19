@@ -307,11 +307,23 @@ class HyperMaster:
         do stuff
         """
 
+    def is_job_done(self):
+        return self.status_manager.is_job_done()
+
+    def get_status(self):
+        return self.status_manager.get_status()
+
+    def print_status(self):
+        self.status_manager.print_status()
+
+    def get_completed_tasks(self):
+        return self.task_manager.flush_finished_tasks()
+
 
 # OVERLOADED DO NOT RENAME
 def create_app(hyper_master: HyperMaster):
     """
-    Creates and lauches the master node application
+    Creates and launches the master node application
     """
 
     # create and configure the Flask app
@@ -337,15 +349,3 @@ def create_app(hyper_master: HyperMaster):
     hyper_master.create_routes(app)
 
     return app
-
-
-# TODO: normally, this would be imported
-# as a module, and used in application code
-if __name__ == "__main__":
-    # create the hypermaster
-    server = HyperMaster()
-
-    # TODO: here would be where you would bind handler functions etc.
-
-    # pass control to the server
-    server.start_server()
