@@ -1,9 +1,16 @@
+"""
+Contains implemented functionality for handling status changes and status logging
+"""
+
 from common.logging import Logger
 
 logger = Logger()
 
 
 class Status:
+    """
+    Status object for holding current master status
+    """
     def __init__(self):
         self.num_slaves: int = 0
         self.num_tasks_done: int = 0
@@ -22,14 +29,23 @@ class StatusManager:
         logger.log_trace(f"{self.log_prefix}Status Manager Initialized")
 
     def new_slave_connected(self):
+        """
+        Updates the status when a new slave is connected
+        """
         self.status.num_slaves += 1
         logger.log_trace(f"{self.log_prefix}Status updated.\n{self.get_status()}")
 
     def slave_disconnected(self):
+        """
+        Updates the status when a slave is disconnected
+        """
         self.status.num_slaves -= 1
         logger.log_trace(f"{self.log_prefix}Status updated.\n{self.get_status()}")
 
     def tasks_loaded(self, num_tasks: int):
+        """
+        Updates the status when tasks are loaded
+        """
         if num_tasks > 0:
             self.status.num_tasks = num_tasks
             logger.log_trace(f"{self.log_prefix}Status updated.\n{self.get_status()}")
@@ -38,6 +54,9 @@ class StatusManager:
             raise ValueError
 
     def tasks_completed(self, num_completed: int = 1):
+        """
+        Updates the status when tasks have been completed
+        """
         if num_completed > 0:
             self.status.num_tasks_done += num_completed
             logger.log_trace(f"{self.log_prefix}Status updated.\n{self.get_status()}")
@@ -46,13 +65,22 @@ class StatusManager:
             raise ValueError
 
     def job_completed(self):
+        """
+        Updates the status when the job has completed
+        """
         self.status.job_done = True
         logger.log_trace(f"{self.log_prefix}Status updated.\n{self.get_status()}")
 
     def is_job_done(self):
+        """
+        Returns True is the job is completed. False otherwise
+        """
         return self.status.job_done
 
     def get_status(self) -> str:
+        """
+        Returns a string representation of the current status
+        """
         completion_percentage = 0.00
         if self.status.num_tasks > 0:
             completion_percentage = (self.status.num_tasks_done / self.status.num_tasks) * 100.00
@@ -64,6 +92,8 @@ class StatusManager:
         return status_output
 
     def print_status(self):
+        """
+        Prints the status out in a logger
+        """
         status_printer = Logger()
         status_printer.log_success(self.get_status(), "JOB STATUS")
-

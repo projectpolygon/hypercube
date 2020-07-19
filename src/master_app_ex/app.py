@@ -3,6 +3,7 @@ An example app that imports master and prepares the tasks
 """
 
 from os import path
+from sys import exit as sys_exit
 from threading import Thread
 from time import sleep
 from typing import List
@@ -47,9 +48,9 @@ if __name__ == "__main__":
         completed_tasks: List[Task] = master.get_completed_tasks()
         for task in completed_tasks:
             print(task.payload)
-        exit(0)
+        sys_exit(0)
 
     except KeyboardInterrupt:
         # call master.exit
         print("exiting")
-        exit(0)
+        sys_exit(0)

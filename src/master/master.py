@@ -64,7 +64,8 @@ class HyperMaster:
         self.test_config = None
         self.status_manager = StatusManager()
         self.task_manager = TaskManager(self.status_manager)
-        self.conn_manager: ConnectionManager = ConnectionManager(self.task_manager, self.status_manager)
+        self.conn_manager: ConnectionManager = \
+            ConnectionManager(self.task_manager, self.status_manager)
         self.job: JobInfo = JobInfo()
 
     def load_tasks(self, tasks: List[Task]):
@@ -195,9 +196,9 @@ class HyperMaster:
                     pickled_tasks = pickle_dumps([job_finished_task])
                     compressed_data = compress(pickled_tasks)
                     return create_binary_resp(compressed_data, f'job_{self.job.job_id}_done')
-                else:
-                    logger.log_error(f'Unable to retrieve tasks from manager')
-                    return Response(status=500)
+
+                logger.log_error('Unable to retrieve tasks from manager')
+                return Response(status=500)
 
             except JobNotInitialized:
                 return Response(response="Job Not Initialized", status=403)
@@ -308,15 +309,27 @@ class HyperMaster:
         """
 
     def is_job_done(self):
+        """
+        Convenience Function that calls StatusManager function of same name
+        """
         return self.status_manager.is_job_done()
 
     def get_status(self):
+        """
+        Convenience Function that calls StatusManager function of same name
+        """
         return self.status_manager.get_status()
 
     def print_status(self):
+        """
+        Convenience Function that calls StatusManager function of same name
+        """
         self.status_manager.print_status()
 
     def get_completed_tasks(self):
+        """
+        Returns completed tasks from the TaskManager
+        """
         return self.task_manager.flush_finished_tasks()
 
 

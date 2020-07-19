@@ -93,7 +93,8 @@ class TaskManager:
             else:
                 new_in_progress.append(connected_task)
         self.in_progress = new_in_progress
-        logger.log_trace(f'{self.log_prefix}Migrating tasks for dropped connection ({connection_id})')
+        logger.log_trace(f'{self.log_prefix}'
+                         f'Migrating tasks for dropped connection ({connection_id})')
 
     def add_new_available_task(self, task: Task, job_id: int):
         """

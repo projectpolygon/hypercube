@@ -81,7 +81,8 @@ class ConnectionManager:
     """
     log_prefix = "[ConnectionManager]\n"
 
-    def __init__(self, task_manager: TaskManager, status_manager: StatusManager, cleanup_timeout_secs=3.0):
+    def __init__(self, task_manager: TaskManager,
+                 status_manager: StatusManager, cleanup_timeout_secs=3.0):
         self.task_manager = task_manager
         self.status_manager = status_manager
         self.running = True
