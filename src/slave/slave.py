@@ -15,7 +15,7 @@ from time import sleep
 from typing import List
 from zlib import compress, decompress, error as CompressionException
 from requests import Session, cookies, exceptions as RequestExceptions
-from os import remove
+from os import path
 
 # Internal imports
 import common.api.endpoints as endpoints
@@ -202,7 +202,7 @@ class HyperSlave:
         status = self.handle_tasks()
         if not status:
             logger.log_error("Failed to handle tasks")
-        elif status:
+        elif status == TaskMessageType.TASK_END:
             logger.log_info("No more tasks to run")
         else:
             logger.log_error("Unknown exit status when handling error")
@@ -288,25 +288,28 @@ class HyperSlave:
                 sleep(20)
                 continue
             elif received_tasks[0].message_type == TaskMessageType.TASK_END:
-                status = TaskMessageType.TASK_END
-                return status
+                return TaskMessageType.TASK_END
             else:
                 # For each task make a file containing the the task content
                 try:
                     for task in received_tasks:
-                        task_file = "task_" + str(task.id)
+                        task_file = "task_" + str(task.task_id)
                         self.save_processed_data(task_file, task.payload)
                         logger.log_info('Creating ' + task_file + ' file to use during execution')
-                        self.execute_tasks(received_tasks)
 
-                        Path(f'{self.job_path}/{self.job_id}/{task_file}').unlink()
-                        logger.log_info('Removing ' + task_file + ' file when no longer needed')
+                    self.execute_tasks(received_tasks)
 
-                        with open(task.result_file, 'r') as file:
+                    for task in received_tasks:
+                        if path.exists(f'{self.job_path}/{self.job_id}/{task_file}'):
+                            Path(f'{self.job_path}/{self.job_id}/{task_file}').unlink()
+                            logger.log_info('Removing ' + task_file + ' file when no longer needed')
+
+                        with open(task.result_filename, 'r') as file:
                             result = file.read()
 
-                        current_task: Task = Task.set_all(task.id, task.job_id, TaskMessageType.TASK_PROCESSED, task.cmd,
-                                                          result, task.result_file)
+                        current_task: Task = Task(task.task_id, task.cmd, result, task.result_filename)
+                        current_task.message_type = TaskMessageType.TASK_PROCESSED
+                        current_task.job_id = self.job_id
                         completed_tasks.append(current_task)
 
                     pickled_tasks = pickle_dumps(completed_tasks)
