@@ -1,5 +1,5 @@
 import pytest
-from master.connection import Connection, ConnectionDead
+from master.connection_manager import Connection, ConnectionDead
 
 
 class TestConnection:

@@ -142,7 +142,8 @@ disable=print-statement,
         broad-except,
         too-many-instance-attributes,
         too-few-public-methods,
-        too-many-statements
+        too-many-statements,
+        too-many-return-statements
 
 
 # Enable the message, report, category or checker with the given id(s). You can

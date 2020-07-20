@@ -8,6 +8,8 @@ from typing import List
 from common.task import Task
 from common.logging import Logger
 
+from master.status_manager import StatusManager
+
 logger = Logger()
 
 
@@ -36,11 +38,14 @@ class TaskManager:
     """
     Manages Tasks
     """
+    log_prefix = "[TaskManager]\n"
 
-    def __init__(self):
+    def __init__(self, status_manager: StatusManager):
         self.available_tasks: SimpleQueue = SimpleQueue()
         self.in_progress: List[ConnectedTask] = []
         self.finished_tasks: SimpleQueue = SimpleQueue()
+        self.status_manager = status_manager
+        logger.log_trace(f'{self.log_prefix}Task Manager Initialized')
 
     def connect_available_task(self, connection_id: str) -> Task:
         """
@@ -51,10 +56,13 @@ class TaskManager:
             task: Task = self.available_tasks.get(timeout=0)
             connected_task: ConnectedTask = ConnectedTask(task, connection_id)
             self.in_progress.append(connected_task)
+            logger.log_trace(f'{self.log_prefix}Task connected to slave {connection_id}')
             return task
         except Empty:
             if len(self.in_progress) == 0:
+                logger.log_trace(f'{self.log_prefix}No More Tasks')
                 raise NoMoreTasks
+            logger.log_trace(f'{self.log_prefix}No More Available Tasks')
             raise NoMoreAvailableTasks
 
     def connect_available_tasks(self, num_tasks: int, connection_id: str) -> List[Task]:
@@ -85,6 +93,8 @@ class TaskManager:
             else:
                 new_in_progress.append(connected_task)
         self.in_progress = new_in_progress
+        logger.log_trace(f'{self.log_prefix}'
+                         f'Migrating tasks for dropped connection ({connection_id})')
 
     def add_new_available_task(self, task: Task, job_id: int):
         """
@@ -92,6 +102,7 @@ class TaskManager:
         """
         task.set_job(job_id)
         self.available_tasks.put(task)
+        logger.log_trace(f'{self.log_prefix}New Available Task {task.task_id}')
 
     def add_new_available_tasks(self, tasks: List[Task], job_id: int):
         """
@@ -105,9 +116,14 @@ class TaskManager:
         Removes the task from the list of In Progress Tasks
         Adds the task to the Finished Tasks Queue
         """
+        self.status_manager.tasks_completed(1)
         self.finished_tasks.put(finished_task)
         self.in_progress = [connected_task for connected_task in self.in_progress
                             if connected_task.task.task_id != finished_task.task_id]
+        logger.log_trace(f'{self.log_prefix}Task {finished_task.task_id} completed')
+        if len(self.in_progress) == 0 and self.available_tasks.empty():
+            self.status_manager.job_completed()
+            logger.log_trace(f'{self.log_prefix}No more jobs. Marking job as finished.')
 
     def tasks_finished(self, tasks: List[Task]):
         """
@@ -124,4 +140,5 @@ class TaskManager:
         tasks: List[Task] = []
         for _ in range(self.finished_tasks.qsize()):
             tasks.append(self.finished_tasks.get())
+        logger.log_trace(f'{self.log_prefix}Flushed all finished tasks')
         return tasks
