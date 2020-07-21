@@ -124,7 +124,7 @@ class TaskManager:
         logger.log_trace(f'{self.log_prefix}Task {finished_task.task_id} completed')
         if len(self.in_progress) == 0 and self.available_tasks.empty():
             self.status_manager.job_completed()
-            logger.log_trace(f'{self.log_prefix}No more jobs. Marking job as finished.')
+            logger.log_trace(f'{self.log_prefix}No more tasks. Marking job as finished.')
 
     def tasks_finished(self, tasks: List[Task]):
         """
