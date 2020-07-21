@@ -15,7 +15,7 @@ class TestTaskManager:
 
     def test_connect_available_task(self):
         # Arrange
-        new_task = Task(1, "", "", "")
+        new_task = Task(1, "", [""], None, "", "")
         self.task_manager.add_new_available_task(new_task, 1234)
         connection_id = "conn_1"
         expected_connected_task = ConnectedTask(new_task, connection_id)
@@ -34,7 +34,7 @@ class TestTaskManager:
 
     def test_connect_available_task_no_available_tasks(self):
         # Arrange
-        connected_task = ConnectedTask(Task(1, "", None, ""), "")
+        connected_task = ConnectedTask(Task(1, "", [""], None, "", ""), "")
         self.task_manager.in_progress.append(connected_task)
         # Act & Assert
         with pytest.raises(NoMoreAvailableTasks):
@@ -42,8 +42,8 @@ class TestTaskManager:
 
     def test_connect_available_tasks_less_than_available(self):
         # Arrange
-        new_task_1 = Task(1, "", "", "")
-        new_task_2 = Task(2, "", "", "")
+        new_task_1 = Task(1, "", [""], None, "", "")
+        new_task_2 = Task(2, "", [""], None, "", "")
         self.task_manager.add_new_available_task(new_task_1, 1234)
         self.task_manager.add_new_available_task(new_task_2, 1234)
         connection_id = "conn_1"
@@ -59,8 +59,8 @@ class TestTaskManager:
 
     def test_connect_available_tasks(self):
         # Arrange
-        new_task_1 = Task(1, "", "", "")
-        new_task_2 = Task(2, "", "", "")
+        new_task_1 = Task(1, "", [""], None, "", "")
+        new_task_2 = Task(2, "", [""], None, "", "")
         self.task_manager.add_new_available_task(new_task_1, 1234)
         self.task_manager.add_new_available_task(new_task_2, 1234)
         connection_id = "conn_1"
@@ -86,9 +86,9 @@ class TestTaskManager:
         # Arrange
         connection_id_1 = "connection_1"
         connection_id_2 = "connection_2"
-        task_1 = Task(1, "", None, "")
-        task_2 = Task(2, "", None, "")
-        task_3 = Task(3, "", None, "")
+        task_1 = Task(1, "", [""], None, "", "")
+        task_2 = Task(2, "", [""], None, "", "")
+        task_3 = Task(3, "", [""], None, "", "")
         self.task_manager.add_new_available_task(task_1, 1234)
         self.task_manager.add_new_available_task(task_2, 1234)
         self.task_manager.add_new_available_task(task_3, 1234)
@@ -105,7 +105,7 @@ class TestTaskManager:
 
     def test_new_available_task(self):
         # Arrange
-        new_task = Task(1, "", None, "")
+        new_task = Task(1, "", [""], None, "", "")
         # Act
         self.task_manager.add_new_available_task(new_task, 1234)
         # Assert
@@ -114,7 +114,7 @@ class TestTaskManager:
 
     def test_new_available_tasks(self):
         # Arrange
-        new_tasks = [Task(1, "", None, ""), Task(2, "", None, "")]
+        new_tasks = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", "")]
         for task in new_tasks:
             task.job_id = 1234
         # Act
@@ -126,7 +126,7 @@ class TestTaskManager:
 
     def test_task_finished_queue(self):
         # Arrange
-        finished_task = Task(1, "", None, "")
+        finished_task = Task(1, "", [""], None, "", "")
         finished_task.job_id = 1234
         # Act
         self.task_manager.task_finished(finished_task)
@@ -136,8 +136,8 @@ class TestTaskManager:
 
     def test_task_finished_in_progress(self):
         # Arrange
-        finished_task = Task(1, "", "", "")
-        task = Task(2, "", "", "")
+        finished_task = Task(1, "", [""], None, "", "")
+        task = Task(2, "", [""], None, "", "")
         self.task_manager.add_new_available_task(finished_task, 1234)
         self.task_manager.add_new_available_task(task, 1234)
         self.task_manager.connect_available_tasks(2, "")
@@ -153,7 +153,7 @@ class TestTaskManager:
 
     def test_tasks_finished(self):
         # Arrange
-        finished_tasks = [Task(1, "", None, ""), Task(2, "", None, ""), Task(3, "", None, "")]
+        finished_tasks = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
         # Act
         self.task_manager.tasks_finished(finished_tasks)
         # Assert
@@ -163,7 +163,7 @@ class TestTaskManager:
 
     def test_flush_finished_tasks(self):
         # Arrange
-        tasks = [Task(1, "", None, ""), Task(2, "", None, ""), Task(3, "", None, "")]
+        tasks = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
         finished_tasks = tasks.copy()
         self.task_manager.tasks_finished(finished_tasks)
         # Act
