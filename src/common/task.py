@@ -30,8 +30,8 @@ class Task:
     result_filename: str
     payload_filename: str
 
-    def __init__(self, task_id: int, program: str, arg_file_names: List[str], payload, result_filename: str,
-                 payload_filename: str):
+    def __init__(self, task_id: int, program: str, arg_file_names: List[str],
+                 payload, result_filename: str, payload_filename: str):
         self.task_id = task_id
         self.program = program
         self.arg_file_names = arg_file_names
