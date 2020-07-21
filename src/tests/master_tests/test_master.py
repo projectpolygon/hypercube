@@ -65,18 +65,22 @@ class TestMaster:
     def test_get_completed_tasks(self):
         # Arrange
         completed_tasks: List[Task] = [Task(0, "", [""], None, "", ""), Task(1, "", [""], None, "", "")]
+        self.master.task_manager.add_new_available_tasks(completed_tasks, 1234)
+        for task in completed_tasks:
+            task.message_type = TaskMessageType.TASK_PROCESSED
+        self.master.task_manager.connect_available_tasks(len(completed_tasks), "")
         self.master.task_manager.tasks_finished(completed_tasks)
         # Act
         returned_tasks = self.master.get_completed_tasks()
         # Assert
         assert returned_tasks == completed_tasks
 
-
     # API Testing
     def test_load_tasks(self):
         # Arrange
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""),
+                             Task(3, "", [""], None, "", "")]
         available_tasks = self.master.task_manager.available_tasks
         # Act
         self.master.load_tasks(tasks)
@@ -188,7 +192,8 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""),
+                             Task(3, "", [""], None, "", "")]
         for task in tasks:
             task.set_job(1234)
         self.master.task_manager.add_new_available_tasks(tasks, 1234)
@@ -204,7 +209,12 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""),
+                             Task(3, "", [""], None, "", "")]
+        self.master.task_manager.add_new_available_tasks(tasks, 1234)
+        for task in tasks:
+            task.message_type = TaskMessageType.TASK_PROCESSED
+        self.master.task_manager.connect_available_tasks(len(tasks), "")
         self.master.task_manager.tasks_finished(tasks)
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
@@ -229,7 +239,8 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""),
+                             Task(3, "", [""], None, "", "")]
         self.master.task_manager.add_new_available_tasks(tasks, 1234)
         mock_pickle_dumps.side_effect = PicklingError
         # Act
@@ -243,7 +254,8 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""),
+                             Task(3, "", [""], None, "", "")]
         self.master.task_manager.add_new_available_tasks(tasks, 1234)
         mock_compress.side_effect = CompressionException
         # Act
@@ -294,6 +306,7 @@ class TestMaster:
         task: Task = Task(1, "", [""], None, "", "")
         task.set_job(1234)
         self.master.load_tasks([task])
+        task.message_type = TaskMessageType.TASK_PROCESSED
         resp1: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
         data = resp1.data
         # Act
@@ -308,17 +321,20 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        task1: Task = Task(1, "", [""], None, "", "")
-        task2: Task = Task(2, "", [""], None, "", "")
-        task1.set_job(1234)
-        task2.set_job(1234)
-        tasks: List[Task] = [task1, task2]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", "")]
+        for task in tasks:
+            task.set_job(1234)
+            task.message_type = TaskMessageType.TASK_PROCESSED
+        self.master.load_tasks(tasks)
+        tasks[0].message_type = TaskMessageType.TASK_PROCESSED
+        tasks[1].message_type = TaskMessageType.TASK_PROCESSED
+        test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
         pickled_tasks = pickle_dumps(tasks)
         compressed_data = compress(pickled_tasks)
         # Act
-        resp2: Response = test_client.post(f'/{endpoints.TASKS_DONE}/1234', data=compressed_data)
+        resp: Response = test_client.post(f'/{endpoints.TASKS_DONE}/1234', data=compressed_data)
         # Assert
-        assert resp2.status_code == 200
+        assert resp.status_code == 200
         assert self.master.task_manager.finished_tasks.qsize() == 2
         assert self.master.task_manager.finished_tasks.get() == tasks[0]
 
