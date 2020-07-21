@@ -3,6 +3,7 @@ The Task Object is passed between the master and slave.
 """
 
 from enum import Enum
+from typing import List
 
 
 class TaskMessageType(Enum):
@@ -12,6 +13,7 @@ class TaskMessageType(Enum):
     TASK_RAW = 0
     TASK_PROCESSED = 1
     JOB_END = 2
+    TASK_FAILED = 3
 
 
 class Task:
@@ -22,15 +24,20 @@ class Task:
     task_id: int
     job_id: int
     message_type: TaskMessageType
-    cmd: str
+    program: str
+    arg_file_names: List[str]
     payload: bytes
     result_filename: str
+    payload_filename: str
 
-    def __init__(self, task_id: int, cmd: str, payload, result_filename: str):
+    def __init__(self, task_id: int, program: str, arg_file_names: List[str], payload, result_filename: str,
+                 payload_filename: str):
         self.task_id = task_id
-        self.cmd = cmd
+        self.program = program
+        self.arg_file_names = arg_file_names
         self.payload = payload
         self.result_filename = result_filename
+        self.payload_filename = payload_filename
 
     def __eq__(self, other):
         """

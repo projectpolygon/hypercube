@@ -5,7 +5,7 @@ Task Manager manages the Available, In Progress, and Completed Tasks for the Hyp
 from queue import SimpleQueue, Empty
 from typing import List
 
-from common.task import Task
+from common.task import Task, TaskMessageType
 from common.logging import Logger
 
 from master.status_manager import StatusManager
@@ -101,6 +101,7 @@ class TaskManager:
         Adds the task to the Available Tasks Queue and attaches job id to them
         """
         task.set_job(job_id)
+        task.set_message_type(TaskMessageType.TASK_RAW)
         self.available_tasks.put(task)
         logger.log_trace(f'{self.log_prefix}New Available Task {task.task_id}')
 

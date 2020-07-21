@@ -202,7 +202,7 @@ class HyperSlave:
         status = self.handle_tasks()
         if not status:
             logger.log_error("Failed to handle tasks")
-        elif status == TaskMessageType.TASK_END:
+        elif status == TaskMessageType.JOB_END:
             logger.log_info("No more tasks to run")
         else:
             logger.log_error("Unknown exit status when handling error")
@@ -221,7 +221,7 @@ class HyperSlave:
             try:
                 resp = self.session.get(
                     f'http://{self.host}:{self.port}/{endpoints.GET_TASKS}/{self.job_id}/{max_tasks}', timeout=5)
-                tasks: List[Task] = pickle_loads(decompress(resp.data))
+                tasks: List[Task] = pickle_loads(decompress(resp.content))
                 return tasks
 
             except CompressionException as error:
@@ -243,16 +243,36 @@ class HyperSlave:
         Executes the received tasks
         TODO: make these tasks run using multiprocessing instead of subprocess.run()
         """
-        for task in tasks:
-            task_file = 'task_' + str(task.id)
-            command = task.command + ' ' + task_file
-            status = run_shell_command(command, task_file)
-            if status != 0:
-                # TODO: add either retry step or send back failed results to master to be executed on  a different node
-                logger.log_error(task_file + " failed to execute correctly")
-            elif status == 0:
-                logger.log_info(task_file + " executed correctly")
-        return
+        try:
+            failed_tasks: List[Task] = []
+            for task in tasks:
+                command: List[str] = [task.program]
+                for file in task.arg_file_names:
+                    command.append(f' {self.job_path}/{self.job_id}/{file}')
+                status = self.run_shell_command(command)
+                if status != 0:
+                    failed_tasks.append(task)
+                    logger.log_error(task.payload_filename + " failed to execute correctly")
+                elif status == 0:
+                    logger.log_info(task.payload_filename + " executed correctly")
+            return failed_tasks
+        except Exception as error:
+            logger.log_error(f'{error}')
+            return
+
+    def run_shell_command(self, command):
+        """
+        Execute a shell command outputing stdout/stderr to a result.txt file.
+        Returns the shell commands returncode.
+        """
+        try:
+            output = run(command, check=True)
+
+            return output.returncode
+
+        except CalledProcessError as error:
+            logger.log_error(error.output.decode('utf-8'))
+            return error.returncode
 
     def start(self):
         """
@@ -280,43 +300,47 @@ class HyperSlave:
         """
         while True:
             # Get some tasks from master
-            received_tasks = self.req_tasks()
-            completed_tasks = []
+            received_tasks: List[Task] = self.req_tasks()
+            completed_tasks: List[Task] = []
             # if failed to receive tasks after 5 attempts it cannot continue
             if not received_tasks:
                 logger.log_warn('No tasks received. Wait 20 seconds then try again')
                 sleep(20)
                 continue
-            elif received_tasks[0].message_type == TaskMessageType.TASK_END:
-                return TaskMessageType.TASK_END
+            elif received_tasks[0].message_type == TaskMessageType.JOB_END:
+                return TaskMessageType.JOB_END
             else:
                 # For each task make a file containing the the task content
                 try:
                     for task in received_tasks:
-                        task_file = "task_" + str(task.task_id)
-                        self.save_processed_data(task_file, task.payload)
-                        logger.log_info('Creating ' + task_file + ' file to use during execution')
+                        self.save_processed_data(task.payload_filename, task.payload)
+                        logger.log_info('Creating ' + task.payload_filename + ' file to use during execution')
 
-                    self.execute_tasks(received_tasks)
+                    failed_tasks = self.execute_tasks(received_tasks)
+                    if failed_tasks is None:
+                        return
 
                     for task in received_tasks:
-                        if path.exists(f'{self.job_path}/{self.job_id}/{task_file}'):
-                            Path(f'{self.job_path}/{self.job_id}/{task_file}').unlink()
-                            logger.log_info('Removing ' + task_file + ' file when no longer needed')
+                        if task not in failed_tasks:
+                            with open(f'{self.job_path}/{self.job_id}/{task.result_filename}', 'r') as file:
+                                result = file.read()
+                            task_status = TaskMessageType.TASK_PROCESSED
+                        else:
+                            result = None
+                            task_status = TaskMessageType.TASK_FAILED
 
-                        with open(task.result_filename, 'r') as file:
-                            result = file.read()
-
-                        current_task: Task = Task(task.task_id, task.cmd, result, task.result_filename)
-                        current_task.message_type = TaskMessageType.TASK_PROCESSED
+                        current_task: Task = Task(task.task_id, task.program, task.arg_file_names, result,
+                                                  task.result_filename, task.payload_filename)
+                        current_task.message_type = task_status
                         current_task.job_id = self.job_id
                         completed_tasks.append(current_task)
 
                     pickled_tasks = pickle_dumps(completed_tasks)
                     compressed_data = compress(pickled_tasks)
-                    response = self.session.post(f'/{endpoints.TASKS_DONE}/{self.job_id}', data=compressed_data)
+                    response = self.session.post(f'http://{self.host}:{self.port}/{endpoints.TASKS_DONE}/{self.job_id}',
+                                                 data=compressed_data)
 
-                    if response is 200:
+                    if response.status_code == 200:
                         logger.log_info('Completed tasks sent back to master successfully')
                     else:
                         logger.log_error(
@@ -329,31 +353,11 @@ class HyperSlave:
                     logger.log_error(f'Unable to compress pickled tasks\n{error}')
                     return
                 except FileNotFoundError as error:
-                    logger.log_error(f'Unable to find {self.job_path}/{self.job_id}/{task_file} specified\n{error}')
+                    logger.log_error(f'{error}')
                     return
                 except Exception as error:
                     logger.log_error(f'{error}')
                     return
-
-
-def run_shell_command(command, task_id):
-    """
-    Execute a shell command outputing stdout/stderr to a result.txt file.
-    Returns the shell commands returncode.
-    """
-    args = cmd_split(command)
-
-    try:
-        with open('ApplicationResultLog.txt', "w") as result_file:
-            print('Task_' + task_id + ':"', file=result_file)
-            output = run(args, stdout=result_file,
-                         stderr=result_file, text=True, check=True)
-            print('"', file=result_file)
-
-        return output.returncode
-
-    except CalledProcessError as error:
-        logger.log_error(error.output.decode('utf-8'))
 
 
 if __name__ == "__main__":
