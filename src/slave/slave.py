@@ -56,7 +56,7 @@ class HyperSlave:
         self.job_id = None
         self.job_path = None
         self.master_info: MasterInfo = None
-        self.job_done = False
+        self.running = True
 
     def init_job_root(self):
         """
@@ -217,10 +217,10 @@ class HyperSlave:
             logger.log_error("Failed to handle tasks")
         elif status == TaskMessageType.JOB_END:
             self.heartbeat.stop_beating()
-            self.job_done = True
             logger.log_info("No more tasks to run")
         else:
             logger.log_error("Unknown exit status when handling error")
+        self.running = False
 
     def req_tasks(self):
         """
@@ -373,7 +373,7 @@ class HyperSlave:
 
 if __name__ == "__main__":
     MASTER_PORT = 5678
-    JOB_DONE = False
+    RUNNING = True
     if len(argv) == 2:
         MASTER_PORT = int(argv[1])
     elif len(argv) > 2:
@@ -381,12 +381,12 @@ if __name__ == "__main__":
         sys_exit(1)
     while True:
         try:
-            if JOB_DONE:
+            if not RUNNING:
                 logger.log_info('Job completed, graceful shutdown...')
                 break
             client: HyperSlave = HyperSlave(MASTER_PORT)
             client.start()
-            JOB_DONE = client.job_done
+            RUNNING = client.running
         except KeyboardInterrupt:
             logger.log_debug('Graceful shutdown...')
             break

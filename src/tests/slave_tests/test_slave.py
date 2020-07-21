@@ -28,7 +28,7 @@ class TestSlave:
         assert self.slave.job_id is None
         assert self.slave.job_path is None
         assert self.slave.master_info is None
-        assert self.slave.job_done is False
+        assert self.slave.running is True
 
     @patch('slave.slave.Path')
     def test_init_job_root(self, mock_path: Path):
