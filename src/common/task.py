@@ -38,6 +38,7 @@ class Task:
         self.payload = payload
         self.result_filename = result_filename
         self.payload_filename = payload_filename
+        self.message_type = TaskMessageType.TASK_RAW
 
     def __eq__(self, other):
         """
