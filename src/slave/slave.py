@@ -6,7 +6,6 @@ Implemented fuctionality to run a slave node for a distributed workload
 from json import loads as json_loads
 from pathlib import Path
 from random import random
-from shlex import split as cmd_split
 from shutil import rmtree
 from pickle import dumps as pickle_dumps, loads as pickle_loads, PicklingError, UnpicklingError
 from subprocess import CalledProcessError, run
@@ -15,14 +14,12 @@ from time import sleep
 from typing import List
 from zlib import compress, decompress, error as CompressionException
 from requests import Session, cookies, exceptions as RequestExceptions
-from os import path
 
 # Internal imports
 import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
 from common.logging import Logger
 from common.networking import get_ip_addr
-from .heartbeat import Heartbeat
 from common.task import Task, TaskMessageType
 from .heartbeat import Heartbeat
 
@@ -59,7 +56,7 @@ class HyperSlave:
         self.job_id = None
         self.job_path = None
         self.master_info: MasterInfo = None
-        self.running= True
+        self.running = True
 
     def init_job_root(self):
         """
@@ -376,7 +373,7 @@ class HyperSlave:
 
 if __name__ == "__main__":
     MASTER_PORT = 5678
-    running = True
+    RUNNING = True
     if len(argv) == 2:
         MASTER_PORT = int(argv[1])
     elif len(argv) > 2:
@@ -384,12 +381,12 @@ if __name__ == "__main__":
         sys_exit(1)
     while True:
         try:
-            if not running:
+            if not RUNNING:
                 logger.log_info('Job completed, graceful shutdown...')
                 break
             client: HyperSlave = HyperSlave(MASTER_PORT)
             client.start()
-            running = client.running
+            RUNNING = client.running
         except KeyboardInterrupt:
             logger.log_debug('Graceful shutdown...')
             break
