@@ -9,7 +9,7 @@ from random import random
 from shutil import rmtree
 from pickle import dumps as pickle_dumps, loads as pickle_loads, PicklingError, UnpicklingError
 from subprocess import CalledProcessError, run
-from sys import argv, exit as sys_exit
+from sys import exit as sys_exit
 from time import sleep
 from typing import List
 from zlib import compress, decompress, error as CompressionException
@@ -23,13 +23,15 @@ from common.networking import get_ip_addr
 from common.task import Task, TaskMessageType
 from .heartbeat import Heartbeat
 
-logger = Logger()
+LOGGER = Logger()
 
 
 def run_shell_command(command):
     """
     Execute a shell command outputing stdout/stderr to a result.txt file.
     Returns the shell commands returncode.
+    :param command:
+    :return:
     """
     try:
         output = run(command, check=True)
@@ -37,7 +39,7 @@ def run_shell_command(command):
         return output.returncode
 
     except CalledProcessError as error:
-        logger.log_error(error.output.decode('utf-8'))
+        LOGGER.log_error(error.output.decode('utf-8'))
         return error.returncode
 
 
@@ -62,6 +64,9 @@ class HyperSlave:
     def connect(self, hostname, port):
         """
         Connect to a hostname on given post
+        :param hostname:
+        :param port:
+        :return:
         """
         session: Session = Session()
         try:
@@ -75,18 +80,18 @@ class HyperSlave:
                     return session
 
                 except ValueError:
-                    logger.log_error('Master provided no info')
+                    LOGGER.log_error('Master provided no info')
 
         except (ConnectionError, RequestExceptions.ConnectionError):
             return None
 
         # allows breaking out of the loop
         except KeyboardInterrupt:
-            logger.log_debug('Keyboard Interrupt detected. Exiting...')
+            LOGGER.log_debug('Keyboard Interrupt detected. Exiting...')
             sys_exit(0)
 
         except Exception as error:
-            logger.log_error(
+            LOGGER.log_error(
                 f'Exception of type {type(error)} occurred\n{error}')
             sys_exit(1)
 
@@ -95,26 +100,30 @@ class HyperSlave:
     def attempt_master_connection(self, master_port):
         """
         Attempt to find and connect to the master node
+        :param master_port:
+        :return:
         """
 
         self.ip_addr = get_ip_addr()
         network_id = self.ip_addr.rpartition('.')[0]
-        logger.log_info('Attempting master connection')
+        LOGGER.log_info('Attempting master connection')
         for i in range(0, 256):
             hostname = network_id + "." + str(i)
             session = self.connect(hostname, master_port)
             if session is not None:
                 self.set_session(session)
-                logger.log_success(
+                LOGGER.log_success(
                     f"Connected to {hostname}:{master_port}", "MASTER CONNECTED")
                 return hostname
-            logger.print_sameline(f'Master not at: {hostname}:{master_port}')
+            LOGGER.print_sameline(f'Master not at: {hostname}:{master_port}')
         return None
 
     def set_session(self, session: Session):
         """
         Setup the session through the use of a cookie
         Cookie is created with a unique session id
+        :param session:
+        :return:
         """
 
         session_id = self.ip_addr + '-' + str(random() * random() * 123456789)
@@ -127,6 +136,7 @@ class HyperSlave:
         Initializes job root directory,
         polls network for job server (master),
         then requests a job from the master
+        :return:
         """
         self.init_job_root()
 
@@ -135,7 +145,7 @@ class HyperSlave:
             self.host = self.attempt_master_connection(self.port)
             if self.host is not None:
                 break
-            logger.log_info("Retrying...")
+            LOGGER.log_info("Retrying...")
             sleep(1)
         self.heartbeat = Heartbeat(
             session=self.session, url=f'http://{self.host}:{self.port}/{endpoints.HEARTBEAT}')
@@ -145,6 +155,7 @@ class HyperSlave:
     def init_job_root(self):
         """
         Initializes the job root directory
+        :return:
         """
         cwd = str(Path.cwd().resolve())
         job_root_dir_path = cwd + '/job'
@@ -155,6 +166,7 @@ class HyperSlave:
         """
         Create job directory based on job id
         Overwrites the directory if it exists
+        :return:
         """
 
         job_path = f'{self.job_path}/{self.job_id}'
@@ -165,40 +177,49 @@ class HyperSlave:
     def save_processed_data(self, file_name, file_data):
         """
         Write job bytes to file
+        :param file_name:
+        :param file_data:
+        :return:
         """
         try:
             with open(f'{self.job_path}/{self.job_id}/{file_name}', 'wb') as new_file:
                 new_file.write(file_data)
         except OSError as error:
-            logger.log_error(f'{error}')
+            LOGGER.log_error(f'{error}')
             return
-        logger.log_success('Processed data saved')
+        LOGGER.log_success('Processed data saved')
 
     def get_file(self, file_name):
         """
         Requests a file from the master.
         Returns a success boolean
+        :param file_name:
+        :return:
         """
-        logger.log_info(f'requesting file: {file_name}')
+        LOGGER.log_info(f'requesting file: {file_name}')
         resp = self.session.get(
             f'http://{self.host}:{self.port}/{endpoints.FILE}/{self.job_id}/{file_name}'
         )
         if not resp:
-            logger.log_error(f'File: {file_name} was not returned')
+            LOGGER.log_error(f'File: {file_name} was not returned')
             return False
 
-        logger.log_info(f'File: {file_name} received. Saving now...')
+        LOGGER.log_info(f'File: {file_name} received. Saving now...')
 
         try:
             file_data = decompress(resp.content)
         except CompressionException as error:
-            logger.log_error(f'{error}')
+            LOGGER.log_error(f'{error}')
             return False
 
         self.save_processed_data(file_name, file_data)
         return True
 
     def stop(self):
+        """
+        Stops the heartbeat so the master removes it from connections list
+        :return:
+        """
         self.running = False
         self.heartbeat.stop_beating()
         del self.heartbeat
@@ -206,21 +227,21 @@ class HyperSlave:
     def req_job(self):
         """
         Connection established, request a job
+        :return:
         """
         try:
-            logger.log_info(f'Request made to {endpoints.JOB}')
+            LOGGER.log_info(f'Request made to {endpoints.JOB}')
             resp = self.session.get(
                 f'http://{self.host}:{self.port}/{endpoints.JOB}', timeout=5)
 
             if not resp:
-                logger.log_info(f'Request made to {endpoints.JOB} was not returned')
+                LOGGER.log_info(f'Request made to {endpoints.JOB} was not returned')
                 return
 
             # parse as JSON
             job_json = json_loads(resp.json())
             self.job_id: int = job_json.get("job_id")
             job_file_names: list = job_json.get("file_names")
-            self.job_done = False
 
             # create a working directory
             self.create_job_dir()
@@ -234,25 +255,29 @@ class HyperSlave:
                 success = self.process_job()
                 if success:
                     continue
-                if not success and retries_left > 0:
-                    logger.log_warn("Failed to process job, retrying")
+                if retries_left > 0:
+                    LOGGER.log_warn("Failed to process job, retrying")
                     retries_left -= 1
                     continue
-                logger.log_error("Failed to process job")
+                LOGGER.log_error("Failed to process job")
                 break
             self.stop()
 
         except ValueError:
-            logger.log_error('Job data JSON not received. Cannot continue')
+            LOGGER.log_error('Job data JSON not received. Cannot continue')
             self.stop()
             return
 
         except Exception as error:
-            logger.log_error(f'{error}')
+            LOGGER.log_error(f'{error}')
             self.stop()
             return
 
     def process_job(self):
+        """
+        Manages the overall job process to get tasks, run them, then return results
+        :return:
+        """
         # request job tasks
         retry_attempts = 5
         max_concurrent_tasks = 1
@@ -262,7 +287,7 @@ class HyperSlave:
             if tasks is None:
                 if i < 4:
                     continue
-                logger.log_error(f'Task data not received after 5 attempts')
+                LOGGER.log_error(f'Task data not received after 5 attempts')
                 self.running = False
                 return False
             break
@@ -280,6 +305,8 @@ class HyperSlave:
         Requests a task from the master node, if task failed to receive try up to 5 times
         TODO: make this request tasks for as many cpu cores
               as it has using multiprocessings cpu_count()
+        :param max_tasks:
+        :return:
         """
         try:
             resp = self.session.get(
@@ -289,18 +316,20 @@ class HyperSlave:
             return tasks
 
         except CompressionException as error:
-            logger.log_error(f'Unable to decompress raw data\n{error}')
+            LOGGER.log_error(f'Unable to decompress raw data\n{error}')
             return None
         except UnpicklingError as error:
-            logger.log_error(f'Unable to unpickle decompressed tasks\n{error}')
+            LOGGER.log_error(f'Unable to unpickle decompressed tasks\n{error}')
             return None
         except Exception as error:
-            logger.log_warn(f'Task data not received, trying again.\n{error}')
+            LOGGER.log_warn(f'Task data not received, trying again.\n{error}')
             return None
 
     def handle_tasks(self, tasks: List[Task]):
         """
         Handle the tasks
+        :param tasks:
+        :return:
         """
         try:
             handled_tasks: List[Task] = []
@@ -313,7 +342,7 @@ class HyperSlave:
             # For each task make a file containing the the task content
             for task in tasks:
                 self.save_processed_data(task.payload_filename, task.payload)
-                logger.log_info(f"Creating '{task.payload_filename}' file to use during execution")
+                LOGGER.log_info(f"Creating '{task.payload_filename}' file to use during execution")
 
             failed_tasks = self.execute_tasks(tasks)
 
@@ -338,13 +367,15 @@ class HyperSlave:
                 handled_tasks.append(handled_task)
             return True, handled_tasks
         except Exception as error:
-            logger.log_error(f'{error}')
+            LOGGER.log_error(f'{error}')
             return False, []
 
     def execute_tasks(self, tasks):
         """
         Executes the received tasks
         TODO: make these tasks run using multiprocessing instead of subprocess.run()
+        :param tasks:
+        :return:
         """
         try:
             failed_tasks: List[Task] = []
@@ -355,15 +386,20 @@ class HyperSlave:
                 status = run_shell_command(command)
                 if status != 0:
                     failed_tasks.append(task)
-                    logger.log_error(task.payload_filename + " failed to execute correctly")
+                    LOGGER.log_error(task.payload_filename + " failed to execute correctly")
                 elif status == 0:
-                    logger.log_info(task.payload_filename + " executed correctly")
+                    LOGGER.log_info(task.payload_filename + " executed correctly")
             return failed_tasks
         except Exception as error:
-            logger.log_error(f'{error}')
+            LOGGER.log_error(f'{error}')
             return None
 
     def send_tasks(self, tasks: List[Task]):
+        """
+        Send completed tasks back to the master
+        :param tasks:
+        :return:
+        """
         try:
             pickled_tasks = pickle_dumps(tasks)
             compressed_data = compress(pickled_tasks)
@@ -372,22 +408,23 @@ class HyperSlave:
                                          data=compressed_data)
 
             if response.status_code == 200:
-                logger.log_info('Completed tasks sent back to master successfully')
+                LOGGER.log_info('Completed tasks sent back to master successfully')
             else:
-                logger.log_error(
+                LOGGER.log_error(
                     'Completed tasks failed to send back to master '
                     f'successfully, response_code: {response.status_code}')
+            return None
         except PicklingError as error:
-            logger.log_error(f'Unable to pickle tasks\n{error}')
+            LOGGER.log_error(f'Unable to pickle tasks\n{error}')
             return None
         except CompressionException as error:
-            logger.log_error(f'Unable to compress pickled tasks\n{error}')
+            LOGGER.log_error(f'Unable to compress pickled tasks\n{error}')
             return None
         except FileNotFoundError as error:
-            logger.log_error(f'{error}')
+            LOGGER.log_error(f'{error}')
             return None
         except Exception as error:
-            logger.log_error(f'{error}')
+            LOGGER.log_error(f'{error}')
             return None
 
 
@@ -405,5 +442,5 @@ if __name__ == "__main__":
             if client.job_done:
                 break
         except KeyboardInterrupt:
-            logger.log_debug('Graceful shutdown...')
+            LOGGER.log_debug('Graceful shutdown...')
             break
