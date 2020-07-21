@@ -3,7 +3,7 @@ Task Manager manages the Available, In Progress, and Completed Tasks for the Hyp
 """
 
 from queue import SimpleQueue, Empty
-from typing import List
+from typing import List, Dict
 
 from common.task import Task, TaskMessageType
 from common.logging import Logger
@@ -25,6 +25,12 @@ class NoMoreAvailableTasks(Exception):
     """
 
 
+class UnknownTaskMessage(Exception):
+    """
+    Exception raised when the task manager encounters an unknown task message
+    """
+
+
 class ConnectedTask:
     """
     A ConnectedTask is a task that is associated with a connected slave
@@ -42,7 +48,7 @@ class TaskManager:
 
     def __init__(self, status_manager: StatusManager):
         self.available_tasks: SimpleQueue = SimpleQueue()
-        self.in_progress: List[ConnectedTask] = []
+        self.in_progress: Dict[int, ConnectedTask] = {}
         self.finished_tasks: SimpleQueue = SimpleQueue()
         self.status_manager = status_manager
         logger.log_trace(f'{self.log_prefix}Task Manager Initialized')
@@ -55,7 +61,7 @@ class TaskManager:
         try:
             task: Task = self.available_tasks.get(timeout=0)
             connected_task: ConnectedTask = ConnectedTask(task, connection_id)
-            self.in_progress.append(connected_task)
+            self.in_progress[task.task_id] = connected_task
             logger.log_trace(f'{self.log_prefix}Task connected to slave {connection_id}')
             return task
         except Empty:
@@ -86,12 +92,12 @@ class TaskManager:
         Removes the task from the list of In Progress Tasks
         Adds the task to the Available Tasks Queue
         """
-        new_in_progress: List[ConnectedTask] = []
-        for connected_task in self.in_progress:
+        new_in_progress: Dict[int, ConnectedTask] = {}
+        for connected_task in self.in_progress.values():
             if connected_task.connection_id == connection_id:
                 self.add_new_available_task(connected_task.task, connected_task.task.job_id)
             else:
-                new_in_progress.append(connected_task)
+                new_in_progress[connected_task.task.task_id] = connected_task
         self.in_progress = new_in_progress
         logger.log_trace(f'{self.log_prefix}'
                          f'Migrating tasks for dropped connection ({connection_id})')
@@ -117,14 +123,21 @@ class TaskManager:
         Removes the task from the list of In Progress Tasks
         Adds the task to the Finished Tasks Queue
         """
-        self.status_manager.tasks_completed(1)
-        self.finished_tasks.put(finished_task)
-        self.in_progress = [connected_task for connected_task in self.in_progress
-                            if connected_task.task.task_id != finished_task.task_id]
-        logger.log_trace(f'{self.log_prefix}Task {finished_task.task_id} completed')
-        if len(self.in_progress) == 0 and self.available_tasks.empty():
-            self.status_manager.job_completed()
-            logger.log_trace(f'{self.log_prefix}No more jobs. Marking job as finished.')
+        # TODO: Add try expects
+        task = self.in_progress.pop(finished_task.task_id).task
+        if finished_task.message_type == TaskMessageType.TASK_FAILED or finished_task.message_type == TaskMessageType.TASK_RAW:
+            logger.log_trace(f'{self.log_prefix}Task {finished_task.task_id} not processed.'
+                             f'\nAdding it back into available tasks queue')
+            self.add_new_available_task(task, task.job_id)
+        elif finished_task.message_type == TaskMessageType.TASK_PROCESSED:
+            self.status_manager.tasks_completed(1)
+            self.finished_tasks.put(finished_task)
+            logger.log_trace(f'{self.log_prefix}Task {finished_task.task_id} completed')
+            if len(self.in_progress) == 0 and self.available_tasks.empty():
+                self.status_manager.job_completed()
+                logger.log_trace(f'{self.log_prefix}No more tasks. Marking job as finished.')
+        else:
+            raise UnknownTaskMessage
 
     def tasks_finished(self, tasks: List[Task]):
         """

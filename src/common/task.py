@@ -30,14 +30,15 @@ class Task:
     result_filename: str
     payload_filename: str
 
-    def __init__(self, task_id: int, program: str, arg_file_names: List[str], payload, result_filename: str,
-                 payload_filename: str):
+    def __init__(self, task_id: int, program: str, arg_file_names: List[str],
+                 payload, result_filename: str, payload_filename: str):
         self.task_id = task_id
         self.program = program
         self.arg_file_names = arg_file_names
         self.payload = payload
         self.result_filename = result_filename
         self.payload_filename = payload_filename
+        self.message_type = TaskMessageType.TASK_RAW
 
     def __eq__(self, other):
         """

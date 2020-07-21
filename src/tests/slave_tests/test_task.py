@@ -54,21 +54,22 @@ class TestTasks:
         # Assert
         assert expected_tasks[0].task_id == actual_tasks[0].task_id
 
+    @patch('slave.slave.run_shell_command', return_value=0)
     @patch('slave.slave.Session', spec=Session)
-    def test_execute_tasks_passed(self, mock_session: Session):
+    def test_execute_tasks_passed(self, mock_session: Session, mock_run_shell_command):
         # Arrange
         task_1: Task = Task(1, "echo hello_world", [], None, "result.txt", 'payload.txt')
         task_1.message_type = TaskMessageType.TASK_RAW
         tasks: List[Task] = [task_1]
-        self.slave.run_shell_command = MagicMock(return_value=0)
         mock_session.return_value = mock_session
         # Act
         failed_tasks = self.slave.execute_tasks(tasks)
         # Assert
         assert failed_tasks == []
 
+    @patch('slave.slave.run_shell_command', return_value=1)
     @patch('slave.slave.Session', spec=Session)
-    def test_execute_tasks_failed(self, mock_session: Session):
+    def test_execute_tasks_failed(self, mock_session: Session, mock_run_shell_command):
         # Arrange
         task_1: Task = Task(1, "", [], None, "result.txt", 'payload.txt')
         task_1.message_type = TaskMessageType.TASK_RAW

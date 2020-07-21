@@ -1,5 +1,6 @@
 import pytest
-from common.task import Task
+
+from common.task import Task, TaskMessageType
 from master.status_manager import StatusManager
 from master.task_manager import TaskManager, ConnectedTask, NoMoreTasks, NoMoreAvailableTasks
 
@@ -24,8 +25,9 @@ class TestTaskManager:
         # Assert
         assert new_task == task
         assert len(self.task_manager.in_progress) == 1
-        assert self.task_manager.in_progress[0].task == expected_connected_task.task
-        assert self.task_manager.in_progress[0].connection_id == expected_connected_task.connection_id
+        assert self.task_manager.in_progress.get(new_task.task_id).task == expected_connected_task.task
+        assert self.task_manager.in_progress.get(
+            new_task.task_id).connection_id == expected_connected_task.connection_id
 
     def test_connect_available_task_no_tasks(self):
         # Act & Assert
@@ -35,7 +37,7 @@ class TestTaskManager:
     def test_connect_available_task_no_available_tasks(self):
         # Arrange
         connected_task = ConnectedTask(Task(1, "", [""], None, "", ""), "")
-        self.task_manager.in_progress.append(connected_task)
+        self.task_manager.in_progress[connected_task.task.task_id] = connected_task
         # Act & Assert
         with pytest.raises(NoMoreAvailableTasks):
             assert self.task_manager.connect_available_task("")
@@ -54,8 +56,9 @@ class TestTaskManager:
         assert new_task_1 in tasks
         assert new_task_2 not in tasks
         assert len(self.task_manager.in_progress) == 1
-        assert self.task_manager.in_progress[0].task == expected_connected_task_1.task
-        assert self.task_manager.in_progress[0].connection_id == connection_id
+        assert self.task_manager.in_progress.get(new_task_1.task_id).task == expected_connected_task_1.task
+        assert self.task_manager.in_progress.get(
+            new_task_1.task_id).connection_id == expected_connected_task_1.connection_id
 
     def test_connect_available_tasks(self):
         # Arrange
@@ -72,10 +75,10 @@ class TestTaskManager:
         assert new_task_1 in tasks
         assert new_task_2 in tasks
         assert len(self.task_manager.in_progress) == 2
-        assert self.task_manager.in_progress[0].task == expected_connected_task_1.task
-        assert self.task_manager.in_progress[1].task == expected_connected_task_2.task
-        assert self.task_manager.in_progress[0].connection_id == connection_id
-        assert self.task_manager.in_progress[1].connection_id == connection_id
+        assert self.task_manager.in_progress[new_task_1.task_id].task == expected_connected_task_1.task
+        assert self.task_manager.in_progress[new_task_2.task_id].task == expected_connected_task_2.task
+        assert self.task_manager.in_progress[new_task_1.task_id].connection_id == connection_id
+        assert self.task_manager.in_progress[new_task_2.task_id].connection_id == connection_id
 
     def test_connect_available_tasks_no_tasks(self):
         # Act & Assert
@@ -98,7 +101,7 @@ class TestTaskManager:
         self.task_manager.connection_dropped(connection_id_1)
         # Assert
         assert len(self.task_manager.in_progress) == 1
-        assert self.task_manager.in_progress[0].task.task_id == task_3.task_id
+        assert self.task_manager.in_progress[task_3.task_id].task == task_3
         assert self.task_manager.available_tasks.qsize() == 2
         assert self.task_manager.available_tasks.get().task_id == task_1.task_id
         assert self.task_manager.available_tasks.get().task_id == task_2.task_id
@@ -126,13 +129,31 @@ class TestTaskManager:
 
     def test_task_finished_queue(self):
         # Arrange
-        finished_task = Task(1, "", [""], None, "", "")
-        finished_task.job_id = 1234
+        task = Task(1, "", [""], None, "", "")
+        task.job_id = 1234
+        task.message_type = TaskMessageType.TASK_PROCESSED
+        connected_task = ConnectedTask(task, "")
+        self.task_manager.in_progress[task.task_id] = connected_task
         # Act
-        self.task_manager.task_finished(finished_task)
+        self.task_manager.task_finished(task)
         # Assert
         assert self.task_manager.finished_tasks.qsize() == 1
-        assert self.task_manager.finished_tasks.get() == finished_task
+        assert self.task_manager.finished_tasks.get() == task
+
+    def test_task_finished_failed_task(self):
+        # Arrange
+        task = Task(1, "", [""], None, "", "")
+        task.job_id = 1234
+        task.message_type = TaskMessageType.TASK_FAILED
+        connected_task = ConnectedTask(task, "")
+        self.task_manager.in_progress[task.task_id] = connected_task
+        # Act
+        self.task_manager.task_finished(task)
+        # Assert
+        assert self.task_manager.finished_tasks.qsize() == 0
+        assert len(self.task_manager.in_progress) == 0
+        assert self.task_manager.available_tasks.qsize() == 1
+        assert self.task_manager.available_tasks.get() == task
 
     def test_task_finished_in_progress(self):
         # Arrange
@@ -141,11 +162,12 @@ class TestTaskManager:
         self.task_manager.add_new_available_task(finished_task, 1234)
         self.task_manager.add_new_available_task(task, 1234)
         self.task_manager.connect_available_tasks(2, "")
+        finished_task.message_type = TaskMessageType.TASK_PROCESSED
         # Act
         self.task_manager.task_finished(finished_task)
         # Assert
         assert len(self.task_manager.in_progress) == 1
-        assert self.task_manager.in_progress[0].task == task
+        assert self.task_manager.in_progress[task.task_id].task == task
         assert self.task_manager.finished_tasks.qsize() == 1
         assert self.task_manager.finished_tasks.get() == finished_task
         assert self.task_manager.status_manager.status.num_tasks_done == 1
@@ -153,7 +175,13 @@ class TestTaskManager:
 
     def test_tasks_finished(self):
         # Arrange
-        finished_tasks = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
+        finished_tasks = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""),
+                          Task(3, "", [""], None, "", "")]
+        for task in finished_tasks:
+            task.job_id = 1234
+            task.message_type = TaskMessageType.TASK_PROCESSED
+            connected_task = ConnectedTask(task, "")
+            self.task_manager.in_progress[task.task_id] = connected_task
         # Act
         self.task_manager.tasks_finished(finished_tasks)
         # Assert
@@ -161,9 +189,36 @@ class TestTaskManager:
         assert self.task_manager.status_manager.status.num_tasks_done == 3
         assert self.task_manager.status_manager.is_job_done()
 
+    def test_tasks_finished_some_failed(self):
+        # Arrange
+        tasks = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", ""), Task(4, "", [""], None, "", "")]
+        tasks[0].message_type = TaskMessageType.TASK_PROCESSED
+        tasks[1].message_type = TaskMessageType.TASK_FAILED
+        tasks[2].message_type = TaskMessageType.TASK_FAILED
+        tasks[3].message_type = TaskMessageType.TASK_PROCESSED
+        for task in tasks:
+            task.job_id = 1234
+            connected_task = ConnectedTask(task, "")
+            self.task_manager.in_progress[task.task_id] = connected_task
+        # Act
+        self.task_manager.tasks_finished(tasks)
+        # Assert
+        assert self.task_manager.finished_tasks.qsize() == 2
+        assert self.task_manager.status_manager.status.num_tasks_done == 2
+        assert not self.task_manager.status_manager.is_job_done()
+        assert len(self.task_manager.in_progress) == 0
+        assert self.task_manager.available_tasks.qsize() == 2
+        assert self.task_manager.available_tasks.get() == tasks[1]
+        assert self.task_manager.available_tasks.get() == tasks[2]
+
     def test_flush_finished_tasks(self):
         # Arrange
         tasks = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
+        for task in tasks:
+            task.set_job(1234)
+            task.message_type = TaskMessageType.TASK_PROCESSED
+            connected_task = ConnectedTask(task, "")
+            self.task_manager.in_progress[task.task_id] = connected_task
         finished_tasks = tasks.copy()
         self.task_manager.tasks_finished(finished_tasks)
         # Act
