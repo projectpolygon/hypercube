@@ -11,7 +11,25 @@ from typing import List
 from common.task import Task
 from master.master import HyperMaster, JobInfo
 
+data = "We're no strangers to love You know the rules and so do I A full commitment's what I'm thinking of You " \
+       "wouldn't get this from any other guy I just wanna tell you how I'm feeling Gotta make you understand Never " \
+       "gonna give you up Never gonna let you down Never gonna run around and desert you Never gonna make you cry " \
+       "Never gonna say goodbye Never gonna tell a lie and hurt you We've known each other for so long Your heart's " \
+       "been aching but you're too shy to say it Inside we both know what's been going on We know the game and we're " \
+       "gonna play it And if you ask me how I'm feeling Don't tell me you're too blind to see Never gonna give you up " \
+       "Never gonna let you down Never gonna run around and desert you Never gonna make you cry Never gonna say " \
+       "goodbye Never gonna tell a lie and hurt you Never gonna give you up Never gonna let you down Never gonna run " \
+       "around and desert you Never gonna make you cry Never gonna say goodbye Never gonna tell a lie and hurt you " \
+       "Never gonna give, never gonna give (Give you up) (Ooh) Never gonna give, never gonna give (Give you up) We've " \
+       "known each other for so long Your heart's been aching but you're too shy to say it Inside we both know what's " \
+       "been going on We know the game and we're gonna play it I just wanna tell you how I'm feeling Gotta make you " \
+       "understand Never gonna give you up Never gonna let you down Never gonna run around and desert you Never gonna " \
+       "make you cry Never gonna say goodbye Never gonna tell a lie and hurt you Never gonna give you up Never gonna " \
+       "let you down Never gonna run around and desert you Never gonna make you cry Never gonna say goodbye Never " \
+       "gonna tell a lie and hurt you Never gonna give you up Never gonna let you down Never gonna run around and " \
+       "desert you Never gonna make you cry "
 
+words = data.split(' ')
 if __name__ == "__main__":
     # Step 1: Initialise HyperMaster
     master: HyperMaster = HyperMaster()
@@ -23,18 +41,17 @@ if __name__ == "__main__":
     master.init_job(job)
 
     # Step 3: Setup Tasks
-    PROGRAM = "./slave_app_ex.sh"
-    ARGS = ['payload_1.txt', 'output_1.txt']
-    PAYLOAD = str.encode('hello')
-    task1: Task = Task(1, PROGRAM, ARGS, PAYLOAD, "output_1.txt", "payload_1.txt")
-
-    PROGRAM = "./slave_app_ex.sh"
-    ARGS = ['payload_2.txt', 'output_2.txt']
-    PAYLOAD = str.encode('world')
-    task2: Task = Task(2, PROGRAM, ARGS, PAYLOAD, "output_2.txt", "payload_2.txt")
+    tasks: List[Task] = []
+    for i, word in enumerate(words):
+        PROGRAM = "./slave_app_ex.sh"
+        payload_file_name = f'payload_{i}.txt'
+        result_file_name = f'output_{i}.txt'
+        ARGS = [payload_file_name, result_file_name]
+        PAYLOAD = str.encode(word)
+        tasks.append(Task(i, PROGRAM, ARGS, PAYLOAD, result_file_name, payload_file_name))
 
     # Step 4: Load Tasks
-    master.load_tasks([task1, task2])
+    master.load_tasks(tasks)
 
     # Step 5: Start Master Server
     master_thread = Thread(name='hypermaster_server_thread', target=master.start_server)
@@ -49,8 +66,9 @@ if __name__ == "__main__":
 
         # Step 7: Reassemble completed tasks
         completed_tasks: List[Task] = master.get_completed_tasks()
+        completed_tasks.sort(key=lambda t: t.task_id)
         for task in completed_tasks:
-            print(task.payload)
+            print(task.payload.decode())
         sys_exit(0)
 
     except KeyboardInterrupt:
