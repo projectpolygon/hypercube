@@ -9,7 +9,7 @@ from random import random
 from shutil import rmtree
 from pickle import dumps as pickle_dumps, loads as pickle_loads, PicklingError, UnpicklingError
 from subprocess import CalledProcessError, run
-from sys import argv, exit as sys_exit
+from sys import exit as sys_exit
 from time import sleep
 from typing import List
 from zlib import compress, decompress, error as CompressionException
@@ -199,6 +199,9 @@ class HyperSlave:
         return True
 
     def stop(self):
+        """
+        kills the heartbeat and sets the running flag to false
+        """
         self.running = False
         self.heartbeat.stop_beating()
         del self.heartbeat
@@ -253,6 +256,9 @@ class HyperSlave:
             return
 
     def process_job(self):
+        """
+        Process the job
+        """
         # request job tasks
         retry_attempts = 5
         max_concurrent_tasks = 1
@@ -262,7 +268,7 @@ class HyperSlave:
             if tasks is None:
                 if i < 4:
                     continue
-                logger.log_error(f'Task data not received after 5 attempts')
+                logger.log_error('Task data not received after 5 attempts')
                 self.running = False
                 return False
             break
@@ -364,6 +370,9 @@ class HyperSlave:
             return None
 
     def send_tasks(self, tasks: List[Task]):
+        """
+        Sends (processed) tasks back to the master
+        """
         try:
             pickled_tasks = pickle_dumps(tasks)
             compressed_data = compress(pickled_tasks)
@@ -377,18 +386,19 @@ class HyperSlave:
                 logger.log_error(
                     'Completed tasks failed to send back to master '
                     f'successfully, response_code: {response.status_code}')
+            return True
         except PicklingError as error:
             logger.log_error(f'Unable to pickle tasks\n{error}')
-            return None
+            return False
         except CompressionException as error:
             logger.log_error(f'Unable to compress pickled tasks\n{error}')
-            return None
+            return False
         except FileNotFoundError as error:
             logger.log_error(f'{error}')
-            return None
+            return False
         except Exception as error:
             logger.log_error(f'{error}')
-            return None
+            return False
 
 
 if __name__ == "__main__":
