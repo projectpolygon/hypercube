@@ -3,7 +3,7 @@ from unittest.mock import patch, mock_open, MagicMock
 from requests import Response
 from random import random
 from common.api import endpoints
-from slave.slave import HyperSlave, Path, Session, Heartbeat, DecompressException
+from slave.slave import HyperSlave, Path, Session, Heartbeat, CompressionException
 
 
 class TestSlave:
@@ -28,7 +28,7 @@ class TestSlave:
         assert self.slave.job_id is None
         assert self.slave.job_path is None
         assert self.slave.master_info is None
-        assert self.slave.running is False
+        assert self.slave.job_done is False
 
     @patch('slave.slave.Path')
     def test_init_job_root(self, mock_path: Path):
@@ -211,7 +211,7 @@ class TestSlave:
         mock_session.return_value = mock_session
         mock_session.get.return_value = MagicMock()
         self.slave.session = mock_session
-        mock_decompress.side_effect = DecompressException
+        mock_decompress.side_effect = CompressionException
         # Act
         success = self.slave.get_file("file_name")
         # Assert
@@ -241,6 +241,7 @@ class TestSlave:
         mock_session.get.return_value = mock_resp
         self.slave.create_job_dir = MagicMock()
         self.slave.get_file = MagicMock()
+        self.slave.handle_tasks = MagicMock()
         self.slave.session = mock_session
         # Act
         self.slave.req_job()

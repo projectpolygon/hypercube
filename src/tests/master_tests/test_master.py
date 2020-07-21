@@ -64,7 +64,7 @@ class TestMaster:
 
     def test_get_completed_tasks(self):
         # Arrange
-        completed_tasks: List[Task] = [Task(0, "", None, ""), Task(1, "", None, "")]
+        completed_tasks: List[Task] = [Task(0, "", [""], None, "", ""), Task(1, "", [""], None, "", "")]
         self.master.task_manager.tasks_finished(completed_tasks)
         # Act
         returned_tasks = self.master.get_completed_tasks()
@@ -76,7 +76,7 @@ class TestMaster:
     def test_load_tasks(self):
         # Arrange
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
         available_tasks = self.master.task_manager.available_tasks
         # Act
         self.master.load_tasks(tasks)
@@ -188,7 +188,7 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
         for task in tasks:
             task.set_job(1234)
         self.master.task_manager.add_new_available_tasks(tasks, 1234)
@@ -204,7 +204,7 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
         self.master.task_manager.tasks_finished(tasks)
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
@@ -229,7 +229,7 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
         self.master.task_manager.add_new_available_tasks(tasks, 1234)
         mock_pickle_dumps.side_effect = PicklingError
         # Act
@@ -243,7 +243,7 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        tasks: List[Task] = [Task(1, '', None, ''), Task(2, '', None, ''), Task(3, '', None, '')]
+        tasks: List[Task] = [Task(1, "", [""], None, "", ""), Task(2, "", [""], None, "", ""), Task(3, "", [""], None, "", "")]
         self.master.task_manager.add_new_available_tasks(tasks, 1234)
         mock_compress.side_effect = CompressionException
         # Act
@@ -256,7 +256,7 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        task: Task = Task(1, '', None, '')
+        task: Task = Task(1, "", [""], None, "", "")
         self.master.task_manager.add_new_available_task(task, 1234)
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/0/2')
@@ -267,7 +267,7 @@ class TestMaster:
         # Arrange
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
-        task: Task = Task(1, '', None, '')
+        task: Task = Task(1, "", [""], None, "", "")
         self.master.task_manager.add_new_available_task(task, 1234)
         # Act
         resp: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
@@ -291,7 +291,7 @@ class TestMaster:
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        task: Task = Task(1, '', None, '')
+        task: Task = Task(1, "", [""], None, "", "")
         task.set_job(1234)
         self.master.load_tasks([task])
         resp1: Response = test_client.get(f'/{endpoints.GET_TASKS}/1234/2')
@@ -303,13 +303,13 @@ class TestMaster:
         assert self.master.task_manager.finished_tasks.qsize() == 1
         assert self.master.task_manager.finished_tasks.get() == task
 
-    def test_tasks_done(self):
+    def test_tasks_done_2(self):
         # Arrange
         test_client = self.get_test_client()
         test_client.set_cookie('server', 'id', 'test_session_id')
         self.master.job.job_id = 1234
-        task1: Task = Task(1, '', None, '')
-        task2: Task = Task(2, '', None, '')
+        task1: Task = Task(1, "", [""], None, "", "")
+        task2: Task = Task(2, "", [""], None, "", "")
         task1.set_job(1234)
         task2.set_job(1234)
         tasks: List[Task] = [task1, task2]

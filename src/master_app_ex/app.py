@@ -23,12 +23,15 @@ if __name__ == "__main__":
     master.init_job(job)
 
     # Step 3: Setup Tasks
-    CMD = "echo Hello"
-    PAYLOAD = 0b1010
-    task1: Task = Task(1, CMD, PAYLOAD, "task1.txt")
+    PROGRAM = "./slave_app_ex.sh"
+    ARGS = ['payload_1.txt', 'output_1.txt']
+    PAYLOAD = str.encode('hello')
+    task1: Task = Task(1, PROGRAM, ARGS, PAYLOAD, "output_1.txt", "payload_1.txt")
 
-    CMD = "echo World"
-    task2: Task = Task(2, CMD, PAYLOAD, "task1.txt")
+    PROGRAM = "./slave_app_ex.sh"
+    ARGS = ['payload_2.txt', 'output_2.txt']
+    PAYLOAD = str.encode('world')
+    task2: Task = Task(2, PROGRAM, ARGS, PAYLOAD, "output_2.txt", "payload_2.txt")
 
     # Step 4: Load Tasks
     master.load_tasks([task1, task2])

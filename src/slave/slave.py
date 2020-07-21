@@ -6,12 +6,13 @@ Implemented fuctionality to run a slave node for a distributed workload
 from json import loads as json_loads
 from pathlib import Path
 from random import random
-from shlex import split as cmd_split
 from shutil import rmtree
+from pickle import dumps as pickle_dumps, loads as pickle_loads, PicklingError, UnpicklingError
 from subprocess import CalledProcessError, run
 from sys import argv, exit as sys_exit
 from time import sleep
-from zlib import decompress, error as DecompressException
+from typing import List
+from zlib import compress, decompress, error as CompressionException
 from requests import Session, cookies, exceptions as RequestExceptions
 
 # Internal imports
@@ -19,9 +20,25 @@ import common.api.endpoints as endpoints
 from common.api.types import MasterInfo
 from common.logging import Logger
 from common.networking import get_ip_addr
+from common.task import Task, TaskMessageType
 from .heartbeat import Heartbeat
 
 logger = Logger()
+
+
+def run_shell_command(command):
+    """
+    Execute a shell command outputing stdout/stderr to a result.txt file.
+    Returns the shell commands returncode.
+    """
+    try:
+        output = run(command, check=True)
+
+        return output.returncode
+
+    except CalledProcessError as error:
+        logger.log_error(error.output.decode('utf-8'))
+        return error.returncode
 
 
 class HyperSlave:
@@ -39,7 +56,7 @@ class HyperSlave:
         self.job_id = None
         self.job_path = None
         self.master_info: MasterInfo = None
-        self.running = False
+        self.job_done = False
 
     def init_job_root(self):
         """
@@ -120,10 +137,10 @@ class HyperSlave:
         Overwrites the directory if it exists
         """
 
-        path = f'{self.job_path}/{self.job_id}'
-        rmtree(path=path, ignore_errors=True)
-        Path(path).mkdir(parents=True, exist_ok=False)
-        return path
+        job_path = f'{self.job_path}/{self.job_id}'
+        rmtree(path=job_path, ignore_errors=True)
+        Path(job_path).mkdir(parents=True, exist_ok=False)
+        return job_path
 
     def save_processed_data(self, file_name, file_data):
         """
@@ -154,7 +171,7 @@ class HyperSlave:
 
         try:
             file_data = decompress(resp.content)
-        except DecompressException as error:
+        except CompressionException as error:
             logger.log_error(f'{error}')
             return False
 
@@ -166,11 +183,12 @@ class HyperSlave:
         Connection established, request a job
         """
 
+        logger.log_info(f'Request made to {endpoints.JOB}')
         resp = self.session.get(
             f'http://{self.host}:{self.port}/{endpoints.JOB}', timeout=5)
 
-        # return if there is no job
         if not resp:
+            logger.log_info(f'Request made to {endpoints.JOB} was not returned')
             return
 
         # parse as JSON
@@ -190,16 +208,74 @@ class HyperSlave:
         # create a working directory
         self.create_job_dir()
 
-        # FILE_REQUEST for each file in JOB_DATA list of filenames
+        # FILE_REQUEST for each file in JOB_DATA list of file names
         for file_name in job_file_names:
             self.get_file(file_name)
 
-        while self.running:
-            # TODO handle the rest of the job
-            # TASK_GET
-            # TASK_DATA
-            sleep(1)
-            continue
+        status = self.handle_tasks()
+        if not status:
+            logger.log_error("Failed to handle tasks")
+        elif status == TaskMessageType.JOB_END:
+            self.heartbeat.stop_beating()
+            self.job_done = True
+            logger.log_info("No more tasks to run")
+        else:
+            logger.log_error("Unknown exit status when handling error")
+
+    def req_tasks(self):
+        """
+        Requests a task from the master node, if task failed to receive try up to 5 times
+        TODO: make this request tasks for as many cpu cores
+              as it has using multiprocessings cpu_count()
+        """
+        max_tasks = 1
+
+        for i in range(5):
+            logger.log_info(f'Request made to {endpoints.GET_TASKS}')
+
+            # parse JSON
+            try:
+                resp = self.session.get(
+                    f'http://{self.host}:{self.port}/'
+                    f'{endpoints.GET_TASKS}/{self.job_id}/{max_tasks}', timeout=5)
+                tasks: List[Task] = pickle_loads(decompress(resp.content))
+                return tasks
+
+            except CompressionException as error:
+                logger.log_error(f'Unable to decompress raw data\n{error}')
+                return None
+            except UnpicklingError as error:
+                logger.log_error(f'Unable to unpickle decompressed tasks\n{error}')
+                return None
+            except Exception as error:
+                logger.log_warn(f'Task data not received, trying again.\n{error}')
+                if i < 4:
+                    continue
+                logger.log_error(f'Task data not received after 5 attempts, '
+                                 f'cannot continue.\n{error}')
+                return None
+
+    def execute_tasks(self, tasks):
+        """
+        Executes the received tasks
+        TODO: make these tasks run using multiprocessing instead of subprocess.run()
+        """
+        try:
+            failed_tasks: List[Task] = []
+            for task in tasks:
+                command: List[str] = [task.program]
+                for file in task.arg_file_names:
+                    command.append(f' {self.job_path}/{self.job_id}/{file}')
+                status = run_shell_command(command)
+                if status != 0:
+                    failed_tasks.append(task)
+                    logger.log_error(task.payload_filename + " failed to execute correctly")
+                elif status == 0:
+                    logger.log_info(task.payload_filename + " executed correctly")
+            return failed_tasks
+        except Exception as error:
+            logger.log_error(f'{error}')
+            return None
 
     def start(self):
         """
@@ -221,27 +297,83 @@ class HyperSlave:
         self.heartbeat.start_beating()
         self.req_job()
 
+    def handle_tasks(self):
+        # TODO: Refactor to fix below pylint rule
+        # pylint: disable=too-many-branches
+        """
+        Main loop to handle the tasks until the job is completed or the slave disconnects
+        """
+        while True:
+            try:
+                # Get some tasks from master
+                received_tasks: List[Task] = self.req_tasks()
+                completed_tasks: List[Task] = []
+                # if failed to receive tasks after 5 attempts it cannot continue
+                if not received_tasks:
+                    logger.log_warn('No tasks received. Wait 20 seconds then try again')
+                    sleep(20)
+                    continue
+                if received_tasks[0].message_type == TaskMessageType.JOB_END:
+                    return TaskMessageType.JOB_END
+                # For each task make a file containing the the task content
 
-def run_shell_command(command):
-    """
-    Execute a shell command outputing stdout/stderr to a result.txt file.
-    Returns the shell commands returncode.
-    """
-    args = cmd_split(command)
+                for task in received_tasks:
+                    self.save_processed_data(task.payload_filename, task.payload)
+                    logger.log_info(f"Creating '{task.payload_filename}' file to use during execution")
 
-    try:
-        with open('ApplicationResultLog.txt', "w") as result_file:
-            output = run(args, stdout=result_file,
-                         stderr=result_file, text=True, check=True)
+                failed_tasks = self.execute_tasks(received_tasks)
+                if failed_tasks is None:
+                    return None
 
-        return output.returncode
+                for task in received_tasks:
+                    if task not in failed_tasks:
+                        with open(f'{self.job_path}/{self.job_id}/'
+                                  f'{task.result_filename}', 'r') as file:
+                            result = file.read()
+                        task_status = TaskMessageType.TASK_PROCESSED
+                    else:
+                        result = None
+                        task_status = TaskMessageType.TASK_FAILED
 
-    except CalledProcessError as error:
-        logger.log_error(error.output.decode('utf-8'))
+                    current_task: Task = Task(task.task_id,
+                                              task.program,
+                                              task.arg_file_names,
+                                              result,
+                                              task.result_filename,
+                                              task.payload_filename)
+                    current_task.message_type = task_status
+                    current_task.job_id = self.job_id
+                    completed_tasks.append(current_task)
+
+                pickled_tasks = pickle_dumps(completed_tasks)
+                compressed_data = compress(pickled_tasks)
+                response = self.session.post(f'http://{self.host}:{self.port}/'
+                                             f'{endpoints.TASKS_DONE}/{self.job_id}',
+                                             data=compressed_data)
+
+                if response.status_code == 200:
+                    logger.log_info('Completed tasks sent back to master successfully')
+                else:
+                    logger.log_error(
+                        'Completed tasks failed to send back to master '
+                        f'successfully, response_code: {response.status_code}')
+            except PicklingError as error:
+                logger.log_error(f'Unable to pickle tasks\n{error}')
+                return None
+            except CompressionException as error:
+                logger.log_error(f'Unable to compress pickled tasks\n{error}')
+                return None
+            except FileNotFoundError as error:
+                logger.log_error(f'{error}')
+                return None
+            except Exception as error:
+                logger.log_error(f'{error}')
+                return None
 
 
 if __name__ == "__main__":
     MASTER_PORT = 5678
+    JOB_DONE = False
     if len(argv) == 2:
         MASTER_PORT = int(argv[1])
     elif len(argv) > 2:
@@ -249,8 +381,12 @@ if __name__ == "__main__":
         sys_exit(1)
     while True:
         try:
+            if JOB_DONE:
+                logger.log_info('Job completed, graceful shutdown...')
+                break
             client: HyperSlave = HyperSlave(MASTER_PORT)
             client.start()
+            JOB_DONE = client.job_done
         except KeyboardInterrupt:
             logger.log_debug('Graceful shutdown...')
             break
