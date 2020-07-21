@@ -191,7 +191,7 @@ class HyperMaster:
 
             except NoMoreTasks:
                 if self.status_manager.is_job_done():
-                    job_finished_task = Task(-1, None, None, None, None, None)
+                    job_finished_task = Task(-1, "", [], None, "", "")
                     job_finished_task.set_message_type(TaskMessageType.JOB_END)
                     pickled_tasks = pickle_dumps([job_finished_task])
                     compressed_data = compress(pickled_tasks)

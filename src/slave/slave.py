@@ -43,7 +43,7 @@ class HyperSlave:
         self.job_id = None
         self.job_path = None
         self.master_info: MasterInfo = None
-        self.running = False
+        self.job_done = False
 
     def init_job_root(self):
         """
@@ -124,10 +124,10 @@ class HyperSlave:
         Overwrites the directory if it exists
         """
 
-        path = f'{self.job_path}/{self.job_id}'
-        rmtree(path=path, ignore_errors=True)
-        Path(path).mkdir(parents=True, exist_ok=False)
-        return path
+        job_path = f'{self.job_path}/{self.job_id}'
+        rmtree(path=job_path, ignore_errors=True)
+        Path(job_path).mkdir(parents=True, exist_ok=False)
+        return job_path
 
     def save_processed_data(self, file_name, file_data):
         """
@@ -203,6 +203,8 @@ class HyperSlave:
         if not status:
             logger.log_error("Failed to handle tasks")
         elif status == TaskMessageType.JOB_END:
+            self.heartbeat.stop_beating()
+            self.job_done = True
             logger.log_info("No more tasks to run")
         else:
             logger.log_error("Unknown exit status when handling error")
@@ -230,12 +232,12 @@ class HyperSlave:
             except UnpicklingError as error:
                 logger.log_error(f'Unable to unpickle decompressed tasks\n{error}')
                 return
-            except Exception:
-                logger.log_error('Task data JSON not received, trying again.')
+            except Exception as error:
+                logger.log_error(f'Task data not received, trying again.\n{error}')
                 if i < 4:
                     continue
                 else:
-                    logger.log_error('Task data JSON not received after 5 attempts, cannot continue.')
+                    logger.log_error(f'Task data not received after 5 attempts, cannot continue.\n{error}')
                     return
 
     def execute_tasks(self, tasks):
@@ -362,6 +364,7 @@ class HyperSlave:
 
 if __name__ == "__main__":
     MASTER_PORT = 5678
+    job_done = False
     if len(argv) == 2:
         MASTER_PORT = int(argv[1])
     elif len(argv) > 2:
@@ -369,8 +372,12 @@ if __name__ == "__main__":
         sys_exit(1)
     while True:
         try:
+            if job_done:
+                logger.log_info('Job completed, graceful shutdown...')
+                break
             client: HyperSlave = HyperSlave(MASTER_PORT)
             client.start()
+            job_done = client.job_done
         except KeyboardInterrupt:
             logger.log_debug('Graceful shutdown...')
             break
