@@ -33,7 +33,7 @@ class TestTasks:
         self.slave.session = mock_session
         expected_endpoint = f'http://{self.slave.host}:{self.slave.port}/{endpoints.GET_TASKS}/1234/1'
         # Act
-        self.slave.req_tasks()
+        self.slave.req_tasks(1)
         # Assert
         mock_session.get.assert_called_with(expected_endpoint, timeout=5)
 
@@ -50,7 +50,7 @@ class TestTasks:
         mock_session.get.return_value = mock_resp
         self.slave.session = mock_session
         # Act
-        actual_tasks = self.slave.req_tasks()
+        actual_tasks = self.slave.req_tasks(1)
         # Assert
         assert expected_tasks[0].task_id == actual_tasks[0].task_id
 
@@ -96,7 +96,7 @@ class TestTasks:
         self.slave.execute_tasks = MagicMock()
         self.slave.session = mock_session
         # Act
-        self.slave.handle_tasks()
+        self.slave.handle_tasks(tasks)
         # Assert
         self.slave.execute_tasks.assert_called_with(tasks)
         self.slave.save_processed_data.assert_called_with('payload.txt', expected_payload)
