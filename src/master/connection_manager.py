@@ -36,12 +36,17 @@ class Connection:
     def __hash__(self):
         """
         Needed to make an instance of this object comparable
+
+        :return Integer:
         """
         return hash(self.connection_id)
 
     def __eq__(self, other):
         """
         Needed to make an instance of this object comparable
+
+        :param other:
+        :return String:
         """
         if not isinstance(other, type(self)):
             raise ValueError(f"Object is of type {type(other)}. Expected type {type(self)}")
@@ -50,6 +55,8 @@ class Connection:
     def reset_timer(self):
         """
         Resets the timer for the connection
+
+        :return:
         """
         if self.is_alive():
             self.timer.cancel()
@@ -63,6 +70,8 @@ class Connection:
         """
         Called when the set amount of timeout seconds has been reached
         without a reset. This sets the dead flag of the connection
+
+        :return:
         """
         logger.log_warn(f'{self.log_prefix}Connection [{self.connection_id}]: timed out')
         self.dead.set()
@@ -70,6 +79,8 @@ class Connection:
     def is_alive(self):
         """
         Returns True if the connection is alive, False if dead
+
+        :return Boolean:
         """
         return not self.dead.is_set()
 
@@ -99,6 +110,8 @@ class ConnectionManager:
         Called when the connections_cleanup_timer times out.
         Removes dead connections from the connections dict
         and resets the connections_cleanup_timer
+
+        :return:
         """
         active_connections = {}
         for connection_id, connection in self.connections.items():
@@ -120,6 +133,10 @@ class ConnectionManager:
         """
         Adds a new connection to the connections dict
         Will replace existing connection if one exists with the same connection id
+
+        :param connection_id:
+        :param timeout_secs:
+        :return:
         """
         connection: Connection = Connection(connection_id, timeout_secs)
         self.connections[connection_id] = connection
@@ -129,6 +146,9 @@ class ConnectionManager:
     def reset_connection_timer(self, connection_id: str):
         """
         Resets a connection's timer
+
+        :param connection_id:
+        :return:
         """
         connection: Connection = self.connections.get(connection_id)
         connection.reset_timer()
@@ -138,6 +158,9 @@ class ConnectionManager:
         """
         Returns an alive connection if one is found`
         else, raises ConnectionDead exception
+
+        :param connection_id:
+        :return Connection:
         """
         connection: Connection = self.connections.get(connection_id)
         if connection and connection.is_alive():

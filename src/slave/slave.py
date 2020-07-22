@@ -1,5 +1,5 @@
 """
-Implemented fuctionality to run a slave node for a distributed workload
+Implemented functionality to run a slave node for a distributed workload
 """
 
 # External imports
@@ -30,6 +30,9 @@ def run_shell_command(command):
     """
     Execute a shell command outputing stdout/stderr to a result.txt file.
     Returns the shell commands returncode.
+
+    :param command:
+    :return returncode:
     """
     try:
         output = run(command, check=True)
@@ -62,6 +65,10 @@ class HyperSlave:
     def connect(self, hostname, port):
         """
         Connect to a hostname on given post
+
+        :param hostname:
+        :param port:
+        :return session or None:
         """
         session: Session = Session()
         try:
@@ -95,6 +102,9 @@ class HyperSlave:
     def attempt_master_connection(self, master_port):
         """
         Attempt to find and connect to the master node
+
+        :param master_port:
+        :return String or None:
         """
 
         self.ip_addr = get_ip_addr()
@@ -115,6 +125,9 @@ class HyperSlave:
         """
         Setup the session through the use of a cookie
         Cookie is created with a unique session id
+
+        :param session:
+        :return:
         """
 
         session_id = self.ip_addr + '-' + str(random() * random() * 123456789)
@@ -127,6 +140,8 @@ class HyperSlave:
         Initializes job root directory,
         polls network for job server (master),
         then requests a job from the master
+
+        :return:
         """
         self.init_job_root()
 
@@ -145,6 +160,8 @@ class HyperSlave:
     def init_job_root(self):
         """
         Initializes the job root directory
+
+        :return:
         """
         cwd = str(Path.cwd().resolve())
         job_root_dir_path = cwd + '/job'
@@ -155,6 +172,8 @@ class HyperSlave:
         """
         Create job directory based on job id
         Overwrites the directory if it exists
+
+        :return String:
         """
 
         job_path = f'{self.job_path}/{self.job_id}'
@@ -165,6 +184,10 @@ class HyperSlave:
     def save_processed_data(self, file_name, file_data):
         """
         Write job bytes to file
+
+        :param file_name:
+        :param file_data:
+        :return:
         """
         try:
             with open(f'{self.job_path}/{self.job_id}/{file_name}', 'wb') as new_file:
@@ -178,6 +201,9 @@ class HyperSlave:
         """
         Requests a file from the master.
         Returns a success boolean
+
+        :param file_name:
+        :return Boolean:
         """
         logger.log_info(f'requesting file: {file_name}')
         resp = self.session.get(
@@ -201,6 +227,8 @@ class HyperSlave:
     def stop(self):
         """
         kills the heartbeat and sets the running flag to false
+
+        :return:
         """
         self.running = False
         self.heartbeat.stop_beating()
@@ -209,6 +237,8 @@ class HyperSlave:
     def req_job(self):
         """
         Connection established, request a job
+
+        :return:
         """
         try:
             logger.log_info(f'Request made to {endpoints.JOB}')
@@ -223,7 +253,6 @@ class HyperSlave:
             job_json = json_loads(resp.json())
             self.job_id: int = job_json.get("job_id")
             job_file_names: list = job_json.get("file_names")
-            self.job_done = False
 
             # create a working directory
             self.create_job_dir()
@@ -237,7 +266,7 @@ class HyperSlave:
                 success = self.process_job()
                 if success:
                     continue
-                if not success and retries_left > 0:
+                if retries_left > 0:
                     logger.log_warn("Failed to process job, retrying")
                     retries_left -= 1
                     continue
@@ -258,6 +287,8 @@ class HyperSlave:
     def process_job(self):
         """
         Process the job
+
+        :return Boolean:
         """
         # request job tasks
         retry_attempts = 5
@@ -286,6 +317,9 @@ class HyperSlave:
         Requests a task from the master node, if task failed to receive try up to 5 times
         TODO: make this request tasks for as many cpu cores
               as it has using multiprocessings cpu_count()
+
+        :param max_tasks:
+        :return List[Task] or None:
         """
         try:
             resp = self.session.get(
@@ -307,6 +341,9 @@ class HyperSlave:
     def handle_tasks(self, tasks: List[Task]):
         """
         Handle the tasks
+
+        :param tasks:
+        :return (Boolean, List[Task]):
         """
         try:
             handled_tasks: List[Task] = []
@@ -351,6 +388,9 @@ class HyperSlave:
         """
         Executes the received tasks
         TODO: make these tasks run using multiprocessing instead of subprocess.run()
+
+        :param tasks:
+        :return List[Task] or None:
         """
         try:
             failed_tasks: List[Task] = []
@@ -372,6 +412,9 @@ class HyperSlave:
     def send_tasks(self, tasks: List[Task]):
         """
         Sends (processed) tasks back to the master
+
+        :param tasks:
+        :return Boolean:
         """
         try:
             pickled_tasks = pickle_dumps(tasks)
