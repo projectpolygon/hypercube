@@ -193,7 +193,7 @@ class HyperSlave:
             with open(f'{self.job_path}/{self.job_id}/{file_name}', 'wb') as new_file:
                 new_file.write(file_data)
         except OSError as error:
-            logger.log_error(f'{error}')
+            logger.log_error(f'Save_processed_data OS exception\n{error}')
             return
         logger.log_success('Processed data saved')
 
@@ -218,7 +218,7 @@ class HyperSlave:
         try:
             file_data = decompress(resp.content)
         except CompressionException as error:
-            logger.log_error(f'{error}')
+            logger.log_error(f'Get_file Compression exception\n{error}')
             return False
 
         self.save_processed_data(file_name, file_data)
@@ -280,7 +280,7 @@ class HyperSlave:
             return
 
         except Exception as error:
-            logger.log_error(f'{error}')
+            logger.log_error(f'Req_job broad exception\n{error}')
             self.stop()
             return
 
@@ -296,7 +296,7 @@ class HyperSlave:
         tasks: List[Task] = []
         for i in range(retry_attempts):
             tasks = self.req_tasks(max_concurrent_tasks)
-            if tasks is None:
+            if tasks is None or not tasks:
                 if i < 4:
                     continue
                 logger.log_error('Task data not received after 5 attempts')
@@ -381,7 +381,7 @@ class HyperSlave:
                 handled_tasks.append(handled_task)
             return True, handled_tasks
         except Exception as error:
-            logger.log_error(f'{error}')
+            logger.log_error(f'Handle_tasks broad exception\n{error}')
             return False, []
 
     def execute_tasks(self, tasks):
@@ -406,7 +406,7 @@ class HyperSlave:
                     logger.log_info(task.payload_filename + " executed correctly")
             return failed_tasks
         except Exception as error:
-            logger.log_error(f'{error}')
+            logger.log_error(f'Execute_tasks broad exception\n{error}')
             return None
 
     def send_tasks(self, tasks: List[Task]):
@@ -437,10 +437,10 @@ class HyperSlave:
             logger.log_error(f'Unable to compress pickled tasks\n{error}')
             return False
         except FileNotFoundError as error:
-            logger.log_error(f'{error}')
+            logger.log_error(f'Send_tasks file not found\n{error}')
             return False
         except Exception as error:
-            logger.log_error(f'{error}')
+            logger.log_error(f'Send_tasks broad exception\n{error}')
             return False
 
 
