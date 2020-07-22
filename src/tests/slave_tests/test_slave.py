@@ -242,6 +242,8 @@ class TestSlave:
         self.slave.create_job_dir = MagicMock()
         self.slave.get_file = MagicMock()
         self.slave.handle_tasks = MagicMock()
+        self.slave.heartbeat = MagicMock()
+        self.slave.process_job = MagicMock(return_value=False)
         self.slave.session = mock_session
         # Act
         self.slave.req_job()

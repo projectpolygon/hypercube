@@ -57,6 +57,9 @@ class TaskManager:
         """
         Connects a task with a connection id associated with the connected slave
         Returns the task
+
+        :param connection_id:
+        :return Task:
         """
         try:
             task: Task = self.available_tasks.get(timeout=0)
@@ -75,6 +78,10 @@ class TaskManager:
         """
         Connects num_tasks amount of tasks with a connection id associated with the connected slave
         Returns a list of the tasks
+
+        :param num_tasks:
+        :param connection_id:
+        :return List[Task]:
         """
         tasks: List[Task] = []
         for _ in range(num_tasks):
@@ -91,6 +98,9 @@ class TaskManager:
         Called by the master.ConnectionManager when a connection is removed.
         Removes the task from the list of In Progress Tasks
         Adds the task to the Available Tasks Queue
+
+        :param connection_id:
+        :return:
         """
         new_in_progress: Dict[int, ConnectedTask] = {}
         for connected_task in self.in_progress.values():
@@ -105,6 +115,10 @@ class TaskManager:
     def add_new_available_task(self, task: Task, job_id: int):
         """
         Adds the task to the Available Tasks Queue and attaches job id to them
+
+        :param task:
+        :param job_id:
+        :return:
         """
         task.set_job(job_id)
         task.set_message_type(TaskMessageType.TASK_RAW)
@@ -114,6 +128,10 @@ class TaskManager:
     def add_new_available_tasks(self, tasks: List[Task], job_id: int):
         """
         Adds the tasks to the Available Tasks Queue and attaches the job id to them
+
+        :param tasks:
+        :param job_id:
+        :return:
         """
         for task in tasks:
             self.add_new_available_task(task, job_id)
@@ -122,6 +140,9 @@ class TaskManager:
         """
         Removes the task from the list of In Progress Tasks
         Adds the task to the Finished Tasks Queue
+
+        :param finished_task:
+        :return:
         """
         # TODO: Add try expects
         task = self.in_progress.pop(finished_task.task_id).task
@@ -143,6 +164,9 @@ class TaskManager:
         """
         Removes the tasks from the list of In Progress Tasks
         Adds the tasks to the Finished Tasks Queue
+
+        :param tasks:
+        :return:
         """
         for task in tasks:
             self.task_finished(task)
@@ -150,6 +174,8 @@ class TaskManager:
     def flush_finished_tasks(self) -> List[Task]:
         """
         Removes all tasks from the Finished Tasks Queue and returns them
+
+        :return List[Task]:
         """
         tasks: List[Task] = []
         for _ in range(self.finished_tasks.qsize()):
