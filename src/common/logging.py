@@ -41,9 +41,9 @@ class Logger:
         """
         Logs error messages
 
-        Params:
-            message: str - the message to log
-            end: str (optional) - string appended to the end of the message. Defaults to newline
+        :param message: String - the message to log
+        :param end: String (optional) - string appended to the end of the message. Defaults to newline
+        :return:
         """
         self.print_bold(f'\n{SEPARATOR}')
         self.print_bold(f'{SET_ERROR}ERROR', end=' ')
@@ -55,9 +55,9 @@ class Logger:
         """
         Logs warning messages
 
-        Params:
-            message: str - the message to log
-            end: str (optional) - string appended to the end of the message. Defaults to newline
+        :param message: String - the message to log
+        :param end: String (optional) - string appended to the end of the message. Defaults to newline
+        :return:
         """
         if self.log_level < LogLevel.WARN.value:
             return
@@ -71,9 +71,9 @@ class Logger:
         """
         Logs info messages
 
-        Params:
-            message: str - the message to log
-            end: str (optional) - string appended to the end of the message. Defaults to newline
+        :param message: String  - the message to log
+        :param end: String (optional) - string appended to the end of the message. Defaults to newline
+        :return:
         """
         if self.log_level < LogLevel.INFO.value:
             return
@@ -87,10 +87,10 @@ class Logger:
         """
         Logs success messages
 
-        Params:
-            message: str - the message to log
-            header: str (optional) - string for the message header tag. Defaults to 'Success'
-            end: str (optional) - string appended to the end of the message. Defaults to newline
+        :param message: String - the message to log
+        :param header: String (optional) - string for the message header tag. Defaults to 'Success'
+        :param end: String (optional) - string appended to the end of the message. Defaults to newline
+        :return:
         """
         if self.log_level < LogLevel.INFO.value:
             return
@@ -104,9 +104,9 @@ class Logger:
         """
         Logs debug messages
 
-        Params:
-            message: str - the message to log
-            end: str (optional) - string appended to the end of the message. Defaults to newline
+        :param message: String - the message to log
+        :param end: String (optional) - string appended to the end of the message. Defaults to newline
+        :return:
         """
         if self.log_level < LogLevel.DEBUG.value:
             return
@@ -120,9 +120,9 @@ class Logger:
         """
         Logs trace messages
 
-        Params:
-            message: str - the message to log
-            end: str (optional) - string appended to the end of the message. Defaults to newline
+        :param message: String - the message to log
+        :param end: String (optional) - string appended to the end of the message. Defaults to newline
+        :return:
         """
         if self.log_level < LogLevel.TRACE.value:
             return
@@ -137,8 +137,8 @@ class Logger:
         Prints the current date time in the following format
         [DD Mon YYYY - HH:MM:SS] ( ex: [08 Jun 2020 - 20:14:08])
 
-        Params:
-            end: str (optional) - string appended to the end of the message. Defaults to newline
+        :param end: String (optional) - string appended to the end of the message. Defaults to newline
+        :return:
         """
         self.print_bold(
             f'[{strftime("%d %b %Y - %H:%M:%S")}]', end=end)
@@ -148,6 +148,9 @@ class Logger:
         """
         **Meant to be called repeatedly**
         ie) in a loop
+
+        :param message:
+        :return:
         """
         print(f'\r{message}', end='')
 
@@ -157,9 +160,9 @@ class Logger:
         **Meant for use internally**
         Prints the message in bold formatting
 
-        Params:
-            message: str - the message to print
-            end: str (optional) - string appended to the end of the message. Defaults to newline
+        :param message: String - the message to print
+        :param end: String (optional) - string appended to the end of the message. Defaults to newline
+        :return:
         """
         print(f'{SET_BOLD}{message}{SET_END}', end=end)
 

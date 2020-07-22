@@ -31,6 +31,8 @@ class StatusManager:
     def new_slave_connected(self):
         """
         Updates the status when a new slave is connected
+
+        :return:
         """
         self.status.num_slaves += 1
         logger.log_trace(f"{self.log_prefix}Status updated.\n{self.get_status()}")
@@ -38,6 +40,8 @@ class StatusManager:
     def slave_disconnected(self):
         """
         Updates the status when a slave is disconnected
+
+        :return:
         """
         self.status.num_slaves -= 1
         logger.log_trace(f"{self.log_prefix}Status updated.\n{self.get_status()}")
@@ -45,6 +49,9 @@ class StatusManager:
     def tasks_loaded(self, num_tasks: int):
         """
         Updates the status when tasks are loaded
+
+        :param num_tasks:
+        :return:
         """
         if num_tasks > 0:
             self.status.num_tasks = num_tasks
@@ -56,6 +63,9 @@ class StatusManager:
     def tasks_completed(self, num_completed: int = 1):
         """
         Updates the status when tasks have been completed
+
+        :param num_completed:
+        :return:
         """
         if num_completed > 0:
             self.status.num_tasks_done += num_completed
@@ -67,6 +77,8 @@ class StatusManager:
     def job_completed(self):
         """
         Updates the status when the job has completed
+
+        :return:
         """
         self.status.job_done = True
         logger.log_trace(f"{self.log_prefix}Status updated.\n{self.get_status()}")
@@ -74,12 +86,16 @@ class StatusManager:
     def is_job_done(self):
         """
         Returns True is the job is completed. False otherwise
+
+        :return Boolean:
         """
         return self.status.job_done
 
     def get_status(self) -> str:
         """
         Returns a string representation of the current status
+
+        :return String:
         """
         completion_percentage = 0.00
         if self.status.num_tasks > 0:
@@ -94,6 +110,8 @@ class StatusManager:
     def print_status(self):
         """
         Prints the status out in a logger
+
+        :return:
         """
         status_printer = Logger()
         status_printer.log_success(self.get_status(), "JOB STATUS")

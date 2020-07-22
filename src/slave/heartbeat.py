@@ -28,6 +28,8 @@ class Heartbeat:
     def start_beating(self):
         """
         Initializes and starts the timer as a daemon thread
+
+        :return:
         """
         self.timer: Timer = Timer(self.interval, self.send_beat)
         self.timer.daemon = True
@@ -36,6 +38,8 @@ class Heartbeat:
     def reset_timer(self):
         """
         Resets the timer by cancelling and starting it
+
+        :return:
         """
         self.timer.cancel()
         self.start_beating()
@@ -43,8 +47,9 @@ class Heartbeat:
     def send_beat(self):
         """
         Called when the set interval seconds has been reached
-
         Send heartbeat to the master to keep its connection with master
+
+        :return:
         """
         try:
             resp = self.session.get(url=f'{self.url}', timeout=1)
@@ -75,6 +80,8 @@ class Heartbeat:
     def stop_beating(self):
         """
         Ends the timer by cancelling it
+
+        :return:
         """
         logger.log_info("Heartbeat stopped")
         self.timer.cancel()

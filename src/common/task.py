@@ -43,6 +43,9 @@ class Task:
     def __eq__(self, other):
         """
         Needed to make an instance of this object comparable
+
+        :param other:
+        :return Integer:
         """
         if not isinstance(other, type(self)):
             raise ValueError(f"Object is of type {type(other)}. Expected type {type(self)}")
@@ -51,11 +54,17 @@ class Task:
     def set_job(self, job_id: int):
         """
         Assigns the task a job id
+
+        :param job_id:
+        :return:
         """
         self.job_id = job_id
 
     def set_message_type(self, message_type: TaskMessageType):
         """
         Sets the message type of the Task
+
+        :param message_type:
+        :return:
         """
         self.message_type = message_type
