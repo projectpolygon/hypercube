@@ -72,6 +72,9 @@ class HyperMaster:
         """
         Loads tasks into the Task Manager
         Meant to be used by app that imports master to load prepared tasks
+
+        :param tasks:
+        :return:
         """
         if not hasattr(self.job, 'job_id'):
             logger.log_error("Can't load tasks for uninitialized job")
@@ -84,6 +87,9 @@ class HyperMaster:
         """
         Initializes the job for the master.
         Ensures job files exist
+
+        :param job:
+        :return:
         """
 
         for file_name in job.file_names:
@@ -99,6 +105,8 @@ class HyperMaster:
     def start_server(self):
         """
         Starts the server
+
+        :return:
         """
         app = create_app(self)
         app.run(host=self.host, port=self.port, debug=True, use_reloader=False)
@@ -106,6 +114,9 @@ class HyperMaster:
     def create_routes(self, app):
         """
         Creates the required routes
+
+        :param app:
+        :return Any:
         """
 
         def job_check(job_id: int):
@@ -129,6 +140,8 @@ class HyperMaster:
         def get_job():
             """
             Endpoint to handle job request from the slave
+
+            :return Any:
             """
             conn_id = request.cookies.get('id')
 
@@ -145,6 +158,10 @@ class HyperMaster:
         def get_file(job_id: int, file_name: str):
             """
             Endpoint to handle file request from the slave
+
+            :param job_id:
+            :param file_name:
+            :return Any:
             """
             try:
                 job_check(job_id)
@@ -177,9 +194,12 @@ class HyperMaster:
         # pylint: disable=W0612
         def get_tasks(job_id: int, num_tasks: int):
             """
-            arguments: num_task: int
             fetch task from the queue
             return this task "formatted" back to slave
+
+            :param job_id: Integer
+            :param num_tasks: Integer
+            :return Any:
             """
             try:
                 conn_id = request.cookies.get('id')
@@ -225,6 +245,9 @@ class HyperMaster:
             arguments: job_id: int
             Gets completed task  and pass payload to application
             return 200 ok
+
+            :param job_id:
+            :return Response:
             """
             try:
                 job_check(job_id)
@@ -257,6 +280,8 @@ class HyperMaster:
             """
             Endpoint used for initial master discovery for the slave.
             Returns master information in json format to slave
+
+            :return Any:
             """
             master_info: MasterInfo = {
                 "ip": get_ip_addr()
@@ -268,6 +293,8 @@ class HyperMaster:
         def heartbeat():
             """
             Heartbeat received from a slave, indicating it is still connected
+
+            :return Response:
             """
             conn_id = request.cookies.get('id')
             logger.log_info(f'Updating connection [{conn_id}]...')
@@ -281,54 +308,77 @@ class HyperMaster:
     def set_job_get_handle(self):
         """
         Bind a handle to each call to JOB_GET
+
+        :return:
         """
 
     def job_get_handle_func(self, arg):
         """
         do stuff
+
+        :param arg:
+        :return:
         """
 
     def set_task_get_handle(self):
         """
         Bind a handle to each call to TASK_GET
+
+        :return:
         """
 
     def task_get_handle_func(self, arg):
         """
         do stuff
+
+        :param arg:
+        :return:
         """
 
     def set_file_get_handle(self):
         """
         Bind a handle to each call to FILE_GET
+
+        :return:
         """
 
     def file_get_handle_func(self, arg):
         """
         do stuff
+
+        :param arg:
+        :return:
         """
 
     def is_job_done(self):
         """
         Convenience Function that calls StatusManager function of same name
+
+        :return Boolean:
         """
         return self.status_manager.is_job_done()
 
     def get_status(self):
         """
         Convenience Function that calls StatusManager function of same name
+
+        :return String:
         """
         return self.status_manager.get_status()
 
     def print_status(self):
         """
         Convenience Function that calls StatusManager function of same name
+
+        :return:
         """
         self.status_manager.print_status()
 
     def get_completed_tasks(self):
         """
         Returns completed tasks from the TaskManager
+
+        :return List[Task]:
         """
         return self.task_manager.flush_finished_tasks()
 
@@ -337,6 +387,9 @@ class HyperMaster:
 def create_app(hyper_master: HyperMaster):
     """
     Creates and launches the master node application
+
+    :param hyper_master:
+    :return Flask app:
     """
 
     # create and configure the Flask app

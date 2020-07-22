@@ -8,6 +8,8 @@ from socket import AF_INET, SOCK_DGRAM, socket, error as SocketError
 def get_ip_addr():
     """
     Get own ip address
+
+    :return Any:
     """
     sock: socket = socket(AF_INET, SOCK_DGRAM)
     try:
