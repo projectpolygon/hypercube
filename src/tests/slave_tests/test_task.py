@@ -101,9 +101,7 @@ class TestTasks:
         self.slave.execute_tasks.assert_called_with(tasks)
         self.slave.save_processed_data.assert_called_with('payload.txt', expected_payload)
 
-    @patch('slave.slave.Session', spec=Session)
-    @patch('builtins.open', new_callable=mock_open(read_data='testing'))
-    def test_handle_process_job(self, mock_session: Session, mock_file):
+    def test_handle_process_job(self):
         # Arrange
         expected_payload = "Test".encode()
         task_1: Task = Task(1, "", [], expected_payload, "result.txt", 'payload.txt')
@@ -119,9 +117,7 @@ class TestTasks:
         self.slave.req_tasks.assert_called_with(1)
         self.slave.handle_tasks.assert_called_with(tasks)
 
-    @patch('slave.slave.Session', spec=Session)
-    @patch('builtins.open', new_callable=mock_open(read_data='testing'))
-    def test_handle_process_job_no_task(self, mock_session: Session, mock_file):
+    def test_handle_process_job_no_task(self):
         # Arrange
         self.slave.req_tasks = MagicMock(return_value=None)
         self.slave.handle_tasks = MagicMock()
