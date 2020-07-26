@@ -120,7 +120,7 @@ class ConnectionManager:
             else:
                 self.task_manager.connection_dropped(connection_id)
                 self.status_manager.slave_disconnected()
-                logger.log_info(f'{self.log_prefix}Connection [{connection_id}]: removed')
+                logger.log_trace(f'{self.log_prefix}Connection [{connection_id}]: removed')
         self.connections = active_connections
 
         if self.running:
@@ -129,7 +129,7 @@ class ConnectionManager:
                 self.connections_cleanup_timeout, self.cleanup_connections)
             self.connections_cleanup_timer.start()
 
-    def add_connection(self, connection_id: str, timeout_secs: float = 5.0):
+    def add_connection(self, connection_id: str, timeout_secs: float = 10.0):
         """
         Adds a new connection to the connections dict
         Will replace existing connection if one exists with the same connection id
@@ -150,9 +150,15 @@ class ConnectionManager:
         :param connection_id:
         :return:
         """
-        connection: Connection = self.connections.get(connection_id)
-        connection.reset_timer()
-        logger.log_info(f'{self.log_prefix}Connection [{connection_id}] reset')
+        try:
+            connection: Connection = self.connections.get(connection_id)
+            if connection:
+                connection.reset_timer()
+                logger.log_trace(f'{self.log_prefix}Connection [{connection_id}] reset')
+            else:
+                logger.log_warn(f'{self.log_prefix}Connection [{connection_id}] not found.')
+        except Exception as error:
+            logger.log_error(f"{self.log_prefix}\n{error}")
 
     def get_connection(self, connection_id: str):
         """

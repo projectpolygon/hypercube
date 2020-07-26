@@ -100,6 +100,7 @@ class HyperMaster:
 
         self.job = job
         self.job.job_id = ceil(random() * random() * 9999)
+        self.status_manager.job_id = self.job.job_id
         logger.log_success(f'Job {self.job.job_id} initialized ')
 
     def start_server(self):
@@ -301,54 +302,6 @@ class HyperMaster:
             self.conn_manager.reset_connection_timer(conn_id)
 
             return Response(status=200)
-
-    # functions that can be overridden to do user programmable tasks
-    # TODO: what do these take as arguments, and what do they return?
-
-    def set_job_get_handle(self):
-        """
-        Bind a handle to each call to JOB_GET
-
-        :return:
-        """
-
-    def job_get_handle_func(self, arg):
-        """
-        do stuff
-
-        :param arg:
-        :return:
-        """
-
-    def set_task_get_handle(self):
-        """
-        Bind a handle to each call to TASK_GET
-
-        :return:
-        """
-
-    def task_get_handle_func(self, arg):
-        """
-        do stuff
-
-        :param arg:
-        :return:
-        """
-
-    def set_file_get_handle(self):
-        """
-        Bind a handle to each call to FILE_GET
-
-        :return:
-        """
-
-    def file_get_handle_func(self, arg):
-        """
-        do stuff
-
-        :param arg:
-        :return:
-        """
 
     def is_job_done(self):
         """

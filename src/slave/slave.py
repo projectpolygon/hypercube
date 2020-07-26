@@ -190,12 +190,13 @@ class HyperSlave:
         :return:
         """
         try:
-            with open(f'{self.job_path}/{self.job_id}/{file_name}', 'wb') as new_file:
+            path = f'{self.job_path}/{self.job_id}/{file_name}'
+            with open(path, 'wb') as new_file:
                 new_file.write(file_data)
         except OSError as error:
             logger.log_error(f'Save_processed_data OS exception\n{error}')
             return
-        logger.log_success('Processed data saved')
+        logger.log_success(f'Processed data saved: {path}')
 
     def get_file(self, file_name):
         """
