@@ -23,7 +23,7 @@ from common.networking import get_ip_addr
 from common.task import Task, TaskMessageType
 from .status_manager import StatusManager
 from .connection_manager import ConnectionManager
-from .task_manager import TaskManager, NoMoreTasks
+from .task_manager import TaskManager, NoMoreTasks, NoMoreAvailableTasks
 
 logger = Logger()
 
@@ -144,6 +144,9 @@ class HyperMaster:
 
             :return Any:
             """
+            if self.is_job_done():
+                return Response(status=404)
+
             conn_id = request.cookies.get('id')
 
             logger.log_info(
@@ -209,6 +212,9 @@ class HyperMaster:
                 pickled_tasks = pickle_dumps(tasks)
                 compressed_data = compress(pickled_tasks)
                 return create_binary_resp(compressed_data, f'tasks_job_{self.job.job_id}')
+
+            except NoMoreAvailableTasks:
+                return Response(status=42)
 
             except NoMoreTasks:
                 if self.status_manager.is_job_done():
@@ -298,7 +304,6 @@ class HyperMaster:
             :return Response:
             """
             conn_id = request.cookies.get('id')
-            logger.log_info(f'Updating connection [{conn_id}]...')
             self.conn_manager.reset_connection_timer(conn_id)
 
             return Response(status=200)
@@ -326,6 +331,9 @@ class HyperMaster:
         :return:
         """
         self.status_manager.print_status()
+        # TODO: Below Is a BAD Hot Fix, find real issue later
+        # Issue is the connection cleanup timer stops running for some reason.
+        self.conn_manager.cleanup_connections()
 
     def get_completed_tasks(self):
         """

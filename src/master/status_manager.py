@@ -102,7 +102,7 @@ class StatusManager:
         if self.status.num_tasks > 0:
             completion_percentage = (self.status.num_tasks_done / self.status.num_tasks) * 100.00
         status_output = f'Job ID: {self.job_id}\n'
-        status_output = f'Connected Slaves: {self.status.num_slaves}\n'
+        status_output += f'Connected Slaves: {self.status.num_slaves}\n'
         status_output += f'Tasks Done: {self.status.num_tasks_done}\n'
         status_output += f'Total Tasks: {self.status.num_tasks}\n'
         status_output += 'Progress: {:0.2f}%\n'.format(completion_percentage)

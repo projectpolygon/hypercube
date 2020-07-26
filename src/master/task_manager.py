@@ -62,13 +62,13 @@ class TaskManager:
         :return Task:
         """
         try:
-            task: Task = self.available_tasks.get(timeout=0)
+            task: Task = self.available_tasks.get(timeout=0.05)
             connected_task: ConnectedTask = ConnectedTask(task, connection_id)
             self.in_progress[task.task_id] = connected_task
             logger.log_trace(f'{self.log_prefix}Task connected to slave {connection_id}')
             return task
         except Empty:
-            if len(self.in_progress) == 0:
+            if len(self.in_progress.values()) == 0:
                 logger.log_trace(f'{self.log_prefix}No More Tasks')
                 raise NoMoreTasks
             logger.log_trace(f'{self.log_prefix}No More Available Tasks')

@@ -89,7 +89,8 @@ class TestStatusManager:
 
     def test_get_status(self):
         # Arrange
-        expected_data = 'Connected Slaves: 1\n'
+        expected_data = 'Job ID: -1\n'
+        expected_data += 'Connected Slaves: 1\n'
         expected_data += 'Tasks Done: 312\n'
         expected_data += 'Total Tasks: 410\n'
         expected_data += 'Progress: 76.10%\n'

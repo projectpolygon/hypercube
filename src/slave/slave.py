@@ -40,8 +40,11 @@ def run_shell_command(command):
         return output.returncode
 
     except CalledProcessError as error:
-        logger.log_error(error.output.decode('utf-8'))
+        logger.log_error(f'{error.with_traceback(error.__traceback__)}')
         return error.returncode
+
+    except Exception as error:
+        logger.log_error(f'run_shell_command broad exception {error.with_traceback(error.__traceback__)}')
 
 
 class HyperSlave:
@@ -94,7 +97,7 @@ class HyperSlave:
 
         except Exception as error:
             logger.log_error(
-                f'Exception of type {type(error)} occurred\n{error}')
+                f'Exception of type {type(error)} occurred\n{error.with_traceback(error.__traceback__)}')
             sys_exit(1)
 
         return None
@@ -129,11 +132,11 @@ class HyperSlave:
         :param session:
         :return:
         """
-
         session_id = self.ip_addr + '-' + str(random() * random() * 123456789)
         cookie = cookies.create_cookie('id', session_id)
         session.cookies.set_cookie(cookie)
         self.session = session
+        logger.log_info(f"New Session: {session_id}")
 
     def start(self):
         """
@@ -193,9 +196,14 @@ class HyperSlave:
             path = f'{self.job_path}/{self.job_id}/{file_name}'
             with open(path, 'wb') as new_file:
                 new_file.write(file_data)
+            sleep(0.05)
         except OSError as error:
-            logger.log_error(f'Save_processed_data OS exception\n{error}')
+            logger.log_error(f'save_processed_data OS exception\n{error.with_traceback(error.__traceback__)}')
             return
+        except Exception as error:
+            logger.log_error(f'save_processed_data broad exception\n{error.with_traceback(error.__traceback__)}')
+            return
+
         logger.log_success(f'Processed data saved: {path}')
 
     def get_file(self, file_name):
@@ -219,7 +227,7 @@ class HyperSlave:
         try:
             file_data = decompress(resp.content)
         except CompressionException as error:
-            logger.log_error(f'Get_file Compression exception\n{error}')
+            logger.log_error(f'Get_file Compression exception\n{error.with_traceback(error.__traceback__)}')
             return False
 
         self.save_processed_data(file_name, file_data)
@@ -242,9 +250,15 @@ class HyperSlave:
         :return:
         """
         try:
-            logger.log_info(f'Request made to {endpoints.JOB}')
             resp = self.session.get(
                 f'http://{self.host}:{self.port}/{endpoints.JOB}', timeout=5)
+
+            # TODO: better way to determine job is done
+            if resp.status_code == 404:
+                logger.log_info('Job already done, exiting.')
+                self.stop()
+                sys_exit(0)
+                return
 
             if not resp:
                 logger.log_info(f'Request made to {endpoints.JOB} was not returned')
@@ -262,7 +276,7 @@ class HyperSlave:
             for file_name in job_file_names:
                 self.get_file(file_name)
 
-            retries_left = 3
+            retries_left = 2
             while not self.job_done:
                 success = self.process_job()
                 if success:
@@ -281,7 +295,7 @@ class HyperSlave:
             return
 
         except Exception as error:
-            logger.log_error(f'Req_job broad exception\n{error}')
+            logger.log_error(f'Req_job broad exception\n{error.with_traceback(error.__traceback__)}')
             self.stop()
             return
 
@@ -292,16 +306,15 @@ class HyperSlave:
         :return Boolean:
         """
         # request job tasks
-        retry_attempts = 5
+        retry_attempts = 2
         max_concurrent_tasks = 1
         tasks: List[Task] = []
         for i in range(retry_attempts):
             tasks = self.req_tasks(max_concurrent_tasks)
-            if tasks is None or not tasks:
-                if i < 4:
+            if not tasks or len(tasks) == 0:
+                if i < retry_attempts:
                     continue
-                logger.log_error('Task data not received after 5 attempts')
-                self.running = False
+                logger.log_error(f'Task data not received after {retry_attempts} attempts')
                 return False
             break
         # handle tasks
@@ -326,17 +339,18 @@ class HyperSlave:
             resp = self.session.get(
                 f'http://{self.host}:{self.port}/'
                 f'{endpoints.GET_TASKS}/{self.job_id}/{max_tasks}', timeout=5)
+
             tasks: List[Task] = pickle_loads(decompress(resp.content))
             return tasks
 
         except CompressionException as error:
-            logger.log_error(f'Unable to decompress raw data\n{error}')
+            logger.log_error(f'Unable to decompress raw data\n{error.with_traceback(error.__traceback__)}')
             return None
         except UnpicklingError as error:
-            logger.log_error(f'Unable to unpickle decompressed tasks\n{error}')
+            logger.log_error(f'Unable to unpickle decompressed tasks\n{error.with_traceback(error.__traceback__)}')
             return None
         except Exception as error:
-            logger.log_warn(f'Task data not received, trying again.\n{error}')
+            logger.log_warn(f'Task data not received, trying again.\n{error.with_traceback(error.__traceback__)}')
             return None
 
     def handle_tasks(self, tasks: List[Task]):
@@ -348,6 +362,9 @@ class HyperSlave:
         """
         try:
             handled_tasks: List[Task] = []
+
+            if not tasks or len(tasks) == 0:
+                return True, handled_tasks
 
             # If job done, set flag and return True
             if tasks[0].message_type == TaskMessageType.JOB_END:
@@ -382,7 +399,7 @@ class HyperSlave:
                 handled_tasks.append(handled_task)
             return True, handled_tasks
         except Exception as error:
-            logger.log_error(f'Handle_tasks broad exception\n{error}')
+            logger.log_error(f'Handle_tasks broad exception\n{error.with_traceback(error.__traceback__)}')
             return False, []
 
     def execute_tasks(self, tasks):
@@ -402,12 +419,12 @@ class HyperSlave:
                 status = run_shell_command(command)
                 if status != 0:
                     failed_tasks.append(task)
-                    logger.log_error(task.payload_filename + " failed to execute correctly")
+                    logger.log_info(f'Task {task.task_id} failed')
                 elif status == 0:
-                    logger.log_info(task.payload_filename + " executed correctly")
+                    logger.log_info(f'Task {task.task_id} executed correctly')
             return failed_tasks
         except Exception as error:
-            logger.log_error(f'Execute_tasks broad exception\n{error}')
+            logger.log_error(f'Execute_tasks broad exception\n{error.with_traceback(error.__traceback__)}')
             return None
 
     def send_tasks(self, tasks: List[Task]):
@@ -432,16 +449,16 @@ class HyperSlave:
                     f'successfully, response_code: {response.status_code}')
             return True
         except PicklingError as error:
-            logger.log_error(f'Unable to pickle tasks\n{error}')
+            logger.log_error(f'Unable to pickle tasks\n{error.with_traceback(error.__traceback__)}')
             return False
         except CompressionException as error:
-            logger.log_error(f'Unable to compress pickled tasks\n{error}')
+            logger.log_error(f'Unable to compress pickled tasks\n{error.with_traceback(error.__traceback__)}')
             return False
         except FileNotFoundError as error:
-            logger.log_error(f'Send_tasks file not found\n{error}')
+            logger.log_error(f'Send_tasks file not found\n{error.with_traceback(error.__traceback__)}')
             return False
         except Exception as error:
-            logger.log_error(f'Send_tasks broad exception\n{error}')
+            logger.log_error(f'Send_tasks broad exception\n{error.with_traceback(error.__traceback__)}')
             return False
 
 

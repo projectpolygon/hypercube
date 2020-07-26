@@ -101,7 +101,7 @@ class ConnectionManager:
         self.connections_cleanup_timeout = cleanup_timeout_secs
         self.connections_cleanup_timer = Timer(
             self.connections_cleanup_timeout, self.cleanup_connections)
-        self.connections_cleanup_timer.daemon = True
+        self.connections_cleanup_timer.setDaemon(True)
         self.connections_cleanup_timer.start()
         logger.log_trace(f'{self.log_prefix}Connection Manager Initialized')
 
@@ -125,11 +125,13 @@ class ConnectionManager:
 
         if self.running:
             # Reset timer
+            self.connections_cleanup_timer.cancel()
             self.connections_cleanup_timer = Timer(
                 self.connections_cleanup_timeout, self.cleanup_connections)
+            self.connections_cleanup_timer.setDaemon(True)
             self.connections_cleanup_timer.start()
 
-    def add_connection(self, connection_id: str, timeout_secs: float = 10.0):
+    def add_connection(self, connection_id: str, timeout_secs: float = 7.5):
         """
         Adds a new connection to the connections dict
         Will replace existing connection if one exists with the same connection id

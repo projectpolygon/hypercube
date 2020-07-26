@@ -120,9 +120,9 @@ class TestTasks:
     def test_handle_process_job_no_task(self):
         # Arrange
         self.slave.req_tasks = MagicMock(return_value=None)
-        self.slave.handle_tasks = MagicMock()
+        self.slave.handle_tasks = MagicMock(return_value=(False, []))
         self.slave.send_tasks = MagicMock()
         # Act
-        self.slave.process_job()
+        success = self.slave.process_job()
         # Assert
-        assert self.slave.running == False
+        assert not success

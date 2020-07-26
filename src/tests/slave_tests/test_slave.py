@@ -219,24 +219,10 @@ class TestSlave:
 
     @patch('requests.Response', spec=Response)
     @patch('slave.slave.Session', spec=Session)
-    def test_req_job_endpoint(self, mock_session: Session, mock_resp: Response):
-        # Arrange
-        mock_session.return_value = mock_session
-        mock_session.get.return_value = False
-        self.slave.host = "hostname"
-        self.slave.port = "port"
-        self.slave.session = mock_session
-        expected_endpoint = f'http://{self.slave.host}:{self.slave.port}/{endpoints.JOB}'
-        # Act
-        self.slave.req_job()
-        # Assert
-        mock_session.get.assert_called_with(expected_endpoint, timeout=5)
-
-    @patch('requests.Response', spec=Response)
-    @patch('slave.slave.Session', spec=Session)
     def test_req_job(self, mock_session: Session, mock_resp: Response):
         # Arrange
         mock_resp.json.return_value = '{"job_id": 1, "file_names": ["file_name"]}'
+        mock_resp.status_code = 200
         mock_session.return_value = mock_session
         mock_session.get.return_value = mock_resp
         self.slave.create_job_dir = MagicMock()
